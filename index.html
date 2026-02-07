@@ -854,196 +854,209 @@
         }
 
         // Download Complete Analysis PDF - Shows ALL combinations
-        async function downloadAnalysisPdf() {
-            if (!analysisData) {
-                alert('No analysis data available');
-                return;
+        // Download Complete Analysis PDF - Shows ALL combinations
+async function downloadAnalysisPdf() {
+    if (!analysisData) {
+        alert('No analysis data available');
+        return;
+    }
+
+    showAnalysisStatus('Fetching all combinations from database...', 'info');
+
+    try {
+        // Fetch ALL combinations for the selected day type
+        const { data: allData, error } = await supabaseClient
+            .from('sika_numbers')
+            .select('year, number')
+            .eq('day_type', analysisData.dayType)
+            .order('year', { ascending: true })
+            .order('id', { ascending: true });
+
+        if (error) {
+            throw new Error('Database error: ' + error.message);
+        }
+
+        showAnalysisStatus('Generating comprehensive PDF...', 'info');
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        let yPosition = 20;
+        const pageHeight = doc.internal.pageSize.height;
+        const marginBottom = 20;
+        const lineHeight = 7;
+        const maxYPosition = pageHeight - marginBottom; // FIXED: Define clear boundary
+
+        // Title
+        doc.setFontSize(23);
+        doc.setFont(undefined, 'bold');
+        doc.text('Winning Numbers Analysis Report', 105, yPosition, { align: 'center' });
+        
+        yPosition += 10;
+        doc.setFontSize(12);
+        doc.text(`Day Type: ${analysisData.dayType}`, 105, yPosition, { align: 'center' });
+        
+        yPosition += 7;
+        doc.text(`Winning Numbers: ${analysisData.winningNumbers}`, 105, yPosition, { align: 'center' });
+        
+        yPosition += 7;
+        doc.setFontSize(15);
+        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, yPosition, { align: 'center' });
+        
+        yPosition += 5;
+        doc.text(`Total Analyzed: ${analysisData.totalCombinations} | Matches Found: ${analysisData.totalMatches}`, 105, yPosition, { align: 'center' });
+        
+        yPosition += 15;
+
+        // Organize all data by year
+        const allDataByYear = {};
+        allData.forEach(row => {
+            if (!allDataByYear[row.year]) {
+                allDataByYear[row.year] = [];
+            }
+            allDataByYear[row.year].push(row.number);
+        });
+
+        const years = Object.keys(allDataByYear).sort((a, b) => a - b);
+        
+        // FIXED: Add debug logging
+        console.log(`Processing ${years.length} years with ${allData.length} total combinations`);
+        
+        years.forEach((year, yearIndex) => {
+            const allCombinations = allDataByYear[year];
+            const yearMatches = analysisData.resultsByYear[year] || [];
+            const matchCount = yearMatches.length;
+            
+            // FIXED: Log progress
+            console.log(`Processing year ${year} (${yearIndex + 1}/${years.length}): ${allCombinations.length} combinations`);
+            
+            // FIXED: Better page break logic - check BEFORE writing header
+            if (yPosition + 30 > maxYPosition) {
+                doc.addPage();
+                yPosition = 20;
             }
 
-            showAnalysisStatus('Fetching all combinations from database...', 'info');
+            // Year header
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text(`Year ${year} (${matchCount} matches)`, 20, yPosition);
+            yPosition += 8;
 
-            try {
-                // Fetch ALL combinations for the selected day type
-                const { data: allData, error } = await supabaseClient
-                    .from('sika_numbers')
-                    .select('year, number')
-                    .eq('day_type', analysisData.dayType)
-                    .order('year', { ascending: true })
-                    .order('id', { ascending: true });
+            // Draw a line
+            doc.setDrawColor(100, 100, 100);
+            doc.line(20, yPosition, 190, yPosition);
+            yPosition += 5;
 
-                if (error) {
-                    throw new Error('Database error: ' + error.message);
+            // Process ALL combinations
+            doc.setFontSize(15);
+            
+            allCombinations.forEach((combination, index) => {
+                // FIXED: Check page space BEFORE writing each line
+                if (yPosition + lineHeight > maxYPosition) {
+                    doc.addPage();
+                    yPosition = 20;
                 }
 
-                showAnalysisStatus('Generating comprehensive PDF...', 'info');
+                // Check if this combination has matches
+                const matchData = yearMatches.find(m => m.combination === combination);
+                const hasMatch = !!matchData;
 
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                
-                let yPosition = 20;
-                const pageHeight = doc.internal.pageSize.height;
-                const marginBottom = 20;
-                const lineHeight = 7;
+                // Display index
+                doc.setFont(undefined, 'normal');
+                if (hasMatch) {
+                    doc.setTextColor(0, 0, 0);
+                } else {
+                    doc.setTextColor(150, 150, 150); // Gray for non-matches
+                }
+                doc.text(`${index + 1}. `, 25, yPosition);
 
-                // Title
-                doc.setFontSize(23);
-                doc.setFont(undefined, 'bold');
-                doc.text('Winning Numbers Analysis Report', 105, yPosition, { align: 'center' });
-                
-                yPosition += 10;
-                doc.setFontSize(12);
-                doc.text(`Day Type: ${analysisData.dayType}`, 105, yPosition, { align: 'center' });
-                
-                yPosition += 7;
-                doc.text(`Winning Numbers: ${analysisData.winningNumbers}`, 105, yPosition, { align: 'center' });
-                
-                yPosition += 7;
-                doc.setFontSize(15);
-                doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, yPosition, { align: 'center' });
-                
-                yPosition += 5;
-                doc.text(`Total Analyzed: ${analysisData.totalCombinations} | Matches Found: ${analysisData.totalMatches}`, 105, yPosition, { align: 'center' });
-                
-                yPosition += 15;
+                // Display combination
+                const nums = combination.split('-');
+                let xPosition = 35;
 
-                // Organize all data by year
-                const allDataByYear = {};
-                allData.forEach(row => {
-                    if (!allDataByYear[row.year]) {
-                        allDataByYear[row.year] = [];
-                    }
-                    allDataByYear[row.year].push(row.number);
-                });
-
-                const years = Object.keys(allDataByYear).sort((a, b) => a - b);
-                
-                years.forEach(year => {
-                    const allCombinations = allDataByYear[year];
-                    const yearMatches = analysisData.resultsByYear[year] || [];
-                    const matchCount = yearMatches.length;
+                if (hasMatch) {
+                    // Has matches - highlight them
+                    const matchIndices = matchData.matches.map(m => m.index);
                     
-                    // Check if we need a new page
-                    if (yPosition + 30 > pageHeight - marginBottom) {
-                        doc.addPage();
-                        yPosition = 20;
-                    }
-
-                    // Year header
-                    doc.setFontSize(14);
-                    doc.setFont(undefined, 'bold');
-                    doc.text(`Year ${year} (${matchCount} matches)`, 20, yPosition);
-                    yPosition += 8;
-
-                    // Draw a line
-                    doc.setDrawColor(100, 100, 100);
-                    doc.line(20, yPosition, 190, yPosition);
-                    yPosition += 5;
-
-                    // Process ALL combinations
-                    doc.setFontSize(15);
-                    
-                    allCombinations.forEach((combination, index) => {
-                        if (yPosition > pageHeight - marginBottom) {
-                            doc.addPage();
-                            yPosition = 20;
-                        }
-
-                        // Check if this combination has matches
-                        const matchData = yearMatches.find(m => m.combination === combination);
-                        const hasMatch = !!matchData;
-
-                        // Display index
-                        doc.setFont(undefined, 'normal');
-                        if (hasMatch) {
-                            doc.setTextColor(0, 0, 0);
-                        } else {
-                            doc.setTextColor(150, 150, 150); // Gray for non-matches
-                        }
-                        doc.text(`${index + 1}. `, 25, yPosition);
-
-                        // Display combination
-                        const nums = combination.split('-');
-                        let xPosition = 35;
-
-                        if (hasMatch) {
-                            // Has matches - highlight them
-                            const matchIndices = matchData.matches.map(m => m.index);
-                            
-                            nums.forEach((num, idx) => {
-                                if (matchIndices.includes(idx)) {
-                                    // Matched number - bold and red with yellow highlight
-                                    doc.setFont(undefined, 'bold');
-                                    doc.setTextColor(220, 38, 38);
-                                    
-                                    const textWidth = doc.getTextWidth(num);
-                                    doc.setFillColor(254, 240, 138);
-                                    doc.rect(xPosition - 1, yPosition - 4, textWidth + 2, 5, 'F');
-                                    
-                                    doc.text(num, xPosition, yPosition);
-                                } else {
-                                    // Normal number in matching combination
-                                    doc.setFont(undefined, 'normal');
-                                    doc.setTextColor(0, 0, 0);
-                                    doc.text(num, xPosition, yPosition);
-                                }
-                                
-                                xPosition += doc.getTextWidth(num);
-                                
-                                if (idx < nums.length - 1) {
-                                    doc.setFont(undefined, 'normal');
-                                    doc.setTextColor(0, 0, 0);
-                                    doc.text('-', xPosition, yPosition);
-                                    xPosition += doc.getTextWidth('-');
-                                }
-                            });
-
-                            // Add match count badge
+                    nums.forEach((num, idx) => {
+                        if (matchIndices.includes(idx)) {
+                            // Matched number - bold and red with yellow highlight
                             doc.setFont(undefined, 'bold');
-                            doc.setTextColor(5, 150, 105);
-                            const matchText = `  [${matchData.matchCount} match${matchData.matchCount > 1 ? 'es' : ''}]`;
-                            doc.text(matchText, xPosition + 2, yPosition);
+                            doc.setTextColor(220, 38, 38);
+                            
+                            const textWidth = doc.getTextWidth(num);
+                            doc.setFillColor(254, 240, 138);
+                            doc.rect(xPosition - 1, yPosition - 4, textWidth + 2, 5, 'F');
+                            
+                            doc.text(num, xPosition, yPosition);
                         } else {
-                            // No matches - display in gray
+                            // Normal number in matching combination
                             doc.setFont(undefined, 'normal');
-                            doc.setTextColor(150, 150, 150);
-                            doc.text(combination, xPosition, yPosition);
+                            doc.setTextColor(0, 0, 0);
+                            doc.text(num, xPosition, yPosition);
                         }
                         
-                        // Reset to normal
-                        doc.setTextColor(0, 0, 0);
-                        doc.setFont(undefined, 'normal');
+                        xPosition += doc.getTextWidth(num);
                         
-                        yPosition += lineHeight;
+                        if (idx < nums.length - 1) {
+                            doc.setFont(undefined, 'normal');
+                            doc.setTextColor(0, 0, 0);
+                            doc.text('-', xPosition, yPosition);
+                            xPosition += doc.getTextWidth('-');
+                        }
                     });
 
-                    yPosition += 8;
-                });
-
-                // Footer
-                doc.setFontSize(15);
-                doc.setFont(undefined, 'italic');
-                const totalPages = doc.internal.pages.length - 1;
-                for (let i = 1; i <= totalPages; i++) {
-                    doc.setPage(i);
-                    doc.text(
-                        `Page ${i} of ${totalPages}`,
-                        105,
-                        pageHeight - 10,
-                        { align: 'center' }
-                    );
+                    // Add match count badge
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(5, 150, 105);
+                    const matchText = `  [${matchData.matchCount} match${matchData.matchCount > 1 ? 'es' : ''}]`;
+                    doc.text(matchText, xPosition + 2, yPosition);
+                } else {
+                    // No matches - display in gray
+                    doc.setFont(undefined, 'normal');
+                    doc.setTextColor(150, 150, 150);
+                    doc.text(combination, xPosition, yPosition);
                 }
+                
+                // Reset to normal
+                doc.setTextColor(0, 0, 0);
+                doc.setFont(undefined, 'normal');
+                
+                yPosition += lineHeight;
+            });
 
-                // Save
-                const fileName = `Sika_Analysis_${analysisData.dayType.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-                doc.save(fileName);
+            yPosition += 8;
+        });
 
-                showAnalysisStatus('PDF generated successfully!', 'success');
+        // FIXED: Log completion
+        console.log('PDF generation complete. Adding footers...');
 
-            } catch (error) {
-                console.error('PDF generation error:', error);
-                showAnalysisStatus('Error generating PDF: ' + error.message, 'error');
-            }
+        // Footer
+        doc.setFontSize(15);
+        doc.setFont(undefined, 'italic');
+        const totalPages = doc.internal.pages.length - 1;
+        for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            doc.text(
+                `Page ${i} of ${totalPages}`,
+                105,
+                pageHeight - 10,
+                { align: 'center' }
+            );
         }
+
+        // Save
+        const fileName = `Sika_Analysis_${analysisData.dayType.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+        doc.save(fileName);
+
+        showAnalysisStatus('PDF generated successfully!', 'success');
+        console.log(`PDF saved: ${fileName} with ${totalPages} pages`);
+
+    } catch (error) {
+        console.error('PDF generation error:', error);
+        showAnalysisStatus('Error generating PDF: ' + error.message, 'error');
+    }
+}
 
         // Download Top 5 Years PDF - Shows ALL combinations
         async function downloadTop5Pdf() {
