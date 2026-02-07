@@ -577,23 +577,45 @@
 
             showAnalysisStatus('Fetching data from database...', 'info');
 
-            try {
-                // Fetch all data for the selected day type
-                const { data, error } = await supabaseClient
-                    .from('sika_numbers')
-                    .select('year, number')
-                    .eq('day_type', dayType)
-                    .order('year', { ascending: true })
-                    .order('id', { ascending: true });
+try {
+    // Fetch ALL data with pagination
+    let allData = [];
+    let from = 0;
+    const batchSize = 1000;
+    let hasMore = true;
 
-                if (error) {
-                    throw new Error('Database error: ' + error.message);
-                }
+    while (hasMore) {
+        const { data, error } = await supabaseClient
+            .from('sika_numbers')
+            .select('year, number')
+            .eq('day_type', dayType)
+            .order('year', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, from + batchSize - 1);
 
-                if (!data || data.length === 0) {
-                    showAnalysisStatus('No data found for ' + dayType, 'error');
-                    return;
-                }
+        if (error) {
+            throw new Error('Database error: ' + error.message);
+        }
+
+        if (data && data.length > 0) {
+            allData = allData.concat(data);
+            from += batchSize;
+            showAnalysisStatus(`Fetching data... (${allData.length} records so far)`, 'info');
+            
+            if (data.length < batchSize) {
+                hasMore = false;
+            }
+        } else {
+            hasMore = false;
+        }
+    }
+
+    if (allData.length === 0) {
+        showAnalysisStatus('No data found for ' + dayType, 'error');
+        return;
+    }
+
+    const data = allData;  // Use allData for the rest of the function
 
                 // Parse winning numbers
                 const winningNumsArray = winningNumbers.split('-').map(n => n.trim());
@@ -864,17 +886,37 @@ async function downloadAnalysisPdf() {
     showAnalysisStatus('Fetching all combinations from database...', 'info');
 
     try {
-        // Fetch ALL combinations for the selected day type
-        const { data: allData, error } = await supabaseClient
+    // Fetch ALL combinations with pagination
+    let allData = [];
+    let from = 0;
+    const batchSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+        const { data, error } = await supabaseClient
             .from('sika_numbers')
             .select('year, number')
             .eq('day_type', analysisData.dayType)
             .order('year', { ascending: true })
-            .order('id', { ascending: true });
+            .order('id', { ascending: true })
+            .range(from, from + batchSize - 1);
 
         if (error) {
             throw new Error('Database error: ' + error.message);
         }
+
+        if (data && data.length > 0) {
+            allData = allData.concat(data);
+            from += batchSize;
+            showAnalysisStatus(`Fetching data... (${allData.length} records)`, 'info');
+            
+            if (data.length < batchSize) {
+                hasMore = false;
+            }
+        } else {
+            hasMore = false;
+        }
+    }
 
         showAnalysisStatus('Generating comprehensive PDF...', 'info');
 
@@ -1068,17 +1110,37 @@ async function downloadAnalysisPdf() {
             showAnalysisStatus('Fetching all combinations from database...', 'info');
 
             try {
-                // Fetch ALL combinations for the selected day type
-                const { data: allData, error } = await supabaseClient
-                    .from('sika_numbers')
-                    .select('year, number')
-                    .eq('day_type', analysisData.dayType)
-                    .order('year', { ascending: true })
-                    .order('id', { ascending: true });
+    // Fetch ALL combinations with pagination
+    let allData = [];
+    let from = 0;
+    const batchSize = 1000;
+    let hasMore = true;
 
-                if (error) {
-                    throw new Error('Database error: ' + error.message);
-                }
+    while (hasMore) {
+        const { data, error } = await supabaseClient
+            .from('sika_numbers')
+            .select('year, number')
+            .eq('day_type', analysisData.dayType)
+            .order('year', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, from + batchSize - 1);
+
+        if (error) {
+            throw new Error('Database error: ' + error.message);
+        }
+
+        if (data && data.length > 0) {
+            allData = allData.concat(data);
+            from += batchSize;
+            showAnalysisStatus(`Fetching data... (${allData.length} records)`, 'info');
+            
+            if (data.length < batchSize) {
+                hasMore = false;
+            }
+        } else {
+            hasMore = false;
+        }
+    }
 
                 // Organize all data by year
                 const allDataByYear = {};
@@ -1299,17 +1361,37 @@ async function downloadAnalysisPdf() {
             showAnalysisStatus('Fetching all combinations from database...', 'info');
 
             try {
-                // Fetch ALL combinations for the selected day type
-                const { data: allData, error } = await supabaseClient
-                    .from('sika_numbers')
-                    .select('year, number')
-                    .eq('day_type', analysisData.dayType)
-                    .order('year', { ascending: true })
-                    .order('id', { ascending: true });
+    // Fetch ALL combinations with pagination
+    let allData = [];
+    let from = 0;
+    const batchSize = 1000;
+    let hasMore = true;
 
-                if (error) {
-                    throw new Error('Database error: ' + error.message);
-                }
+    while (hasMore) {
+        const { data, error } = await supabaseClient
+            .from('sika_numbers')
+            .select('year, number')
+            .eq('day_type', analysisData.dayType)
+            .order('year', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, from + batchSize - 1);
+
+        if (error) {
+            throw new Error('Database error: ' + error.message);
+        }
+
+        if (data && data.length > 0) {
+            allData = allData.concat(data);
+            from += batchSize;
+            showAnalysisStatus(`Fetching data... (${allData.length} records)`, 'info');
+            
+            if (data.length < batchSize) {
+                hasMore = false;
+            }
+        } else {
+            hasMore = false;
+        }
+    }
 
                 // Organize all data by year
                 const allDataByYear = {};
@@ -1769,21 +1851,44 @@ async function downloadAnalysisPdf() {
             showExportStatus('Fetching data from database...', 'info');
 
             try {
-                const { data, error } = await supabaseClient
-                    .from('sika_numbers')
-                    .select('year, number')
-                    .eq('day_type', dayType)
-                    .order('year', { ascending: true })
-                    .order('id', { ascending: true });
+    // Fetch ALL data with pagination
+    let allData = [];
+    let from = 0;
+    const batchSize = 1000;
+    let hasMore = true;
 
-                if (error) {
-                    throw new Error('Database error: ' + error.message);
-                }
+    while (hasMore) {
+        const { data, error } = await supabaseClient
+            .from('sika_numbers')
+            .select('year, number')
+            .eq('day_type', dayType)
+            .order('year', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, from + batchSize - 1);
 
-                if (!data || data.length === 0) {
-                    showExportStatus('No data found for ' + dayType, 'error');
-                    return;
-                }
+        if (error) {
+            throw new Error('Database error: ' + error.message);
+        }
+
+        if (data && data.length > 0) {
+            allData = allData.concat(data);
+            from += batchSize;
+            showExportStatus(`Fetching data... (${allData.length} records)`, 'info');
+            
+            if (data.length < batchSize) {
+                hasMore = false;
+            }
+        } else {
+            hasMore = false;
+        }
+    }
+
+    if (allData.length === 0) {
+        showExportStatus('No data found for ' + dayType, 'error');
+        return;
+    }
+
+    const data = allData;  // Use allData for the rest of the function
 
                 showExportStatus('Generating PDF...', 'info');
 
@@ -2132,23 +2237,44 @@ async function downloadAnalysisPdf() {
             showStrategyStatus('Fetching data from database...', 'info');
 
             try {
-                // Fetch all data for the selected day type
-                const { data, error } = await supabaseClient
-                    .from('sika_numbers')
-                    .select('year, number')
-                    .eq('day_type', dayType)
-                    .order('year', { ascending: true })
-                    .order('id', { ascending: true });
+    // Fetch ALL data with pagination
+    let allData = [];
+    let from = 0;
+    const batchSize = 1000;
+    let hasMore = true;
 
-                if (error) {
-                    throw new Error('Database error: ' + error.message);
-                }
+    while (hasMore) {
+        const { data, error } = await supabaseClient
+            .from('sika_numbers')
+            .select('year, number')
+            .eq('day_type', dayType)
+            .order('year', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, from + batchSize - 1);
 
-                if (!data || data.length === 0) {
-                    showStrategyStatus('No data found for ' + dayType, 'error');
-                    return;
-                }
+        if (error) {
+            throw new Error('Database error: ' + error.message);
+        }
 
+        if (data && data.length > 0) {
+            allData = allData.concat(data);
+            from += batchSize;
+            showStrategyStatus(`Fetching data... (${allData.length} records)`, 'info');
+            
+            if (data.length < batchSize) {
+                hasMore = false;
+            }
+        } else {
+            hasMore = false;
+        }
+    }
+
+    if (allData.length === 0) {
+        showStrategyStatus('No data found for ' + dayType, 'error');
+        return;
+    }
+
+    const data = allData;  // Use allData for the rest of the function
                 showStrategyStatus('Running Strategy A analysis...', 'info');
 
                 // Parse winning numbers
