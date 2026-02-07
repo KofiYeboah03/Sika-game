@@ -1,0 +1,2580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sika Chart Analysis Tool - Enhanced</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-6">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h1 class="text-3xl font-bold text-indigo-900 mb-2">Sika Chart Analysis Tool</h1>
+            <p class="text-gray-600">Upload, organize, and analyze your Sika Charts</p>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="bg-white rounded-xl shadow-lg mb-6">
+            <div class="flex border-b">
+                <button 
+                    id="uploadTab"
+                    class="flex-1 px-6 py-4 font-semibold text-indigo-600 border-b-2 border-indigo-600"
+                    onclick="switchTab('upload')"
+                >
+                    Upload Numbers
+                </button>
+                <button 
+                    id="analysisTab"
+                    class="flex-1 px-6 py-4 font-semibold text-gray-600 hover:text-indigo-600"
+                    onclick="switchTab('analysis')"
+                >
+                    Winning Numbers Analysis
+                </button>
+                <button 
+                    id="exportTab"
+                    class="flex-1 px-6 py-4 font-semibold text-gray-600 hover:text-indigo-600"
+                    onclick="switchTab('export')"
+                >
+                    📄 Export Data
+                </button>
+                <button 
+                    id="strategyTab"
+                    class="flex-1 px-6 py-4 font-semibold text-gray-600 hover:text-indigo-600"
+                    onclick="switchTab('strategy')"
+                >
+                    Strategy Analysis
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Container -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            
+            <!-- UPLOAD TAB -->
+            <div id="uploadSection">
+                <!-- Step 1: Year and Day Type Selection -->
+                <div id="yearSelectionStep" class="text-center">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Setup Your Upload</h2>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">What year do you wish to start?</label>
+                        <input 
+                            type="number" 
+                            id="startYearInput"
+                            placeholder="Enter year (e.g., 2005)"
+                            min="2000"
+                            max="2100"
+                            class="w-64 p-4 border-2 border-gray-300 rounded-lg text-lg text-center focus:border-indigo-500 focus:outline-none"
+                        />
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">Select Day Type</label>
+                        <select 
+                            id="dayTypeSelect"
+                            class="w-64 p-4 border-2 border-gray-300 rounded-lg text-lg focus:border-indigo-500 focus:outline-none"
+                        >
+                            <option value="">-- Select Day Type --</option>
+                            <option value="Monday Special">Monday Special</option>
+                            <option value="Lucky Tuesday">Lucky Tuesday</option>
+                            <option value="Mid Week">Mid Week</option>
+                            <option value="Fortune Thursday">Fortune Thursday</option>
+                            <option value="Friday Bonanza">Friday Bonanza</option>
+                            <option value="National">National</option>
+                        </select>
+                    </div>
+
+                    <button 
+                        id="startUploadBtn"
+                        class="bg-indigo-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
+                    >
+                        Start Upload
+                    </button>
+                </div>
+
+                <!-- Step 2: Data Entry Interface -->
+                <div id="uploadInterface" class="hidden">
+                    <!-- Current Year and Day Type Display -->
+                    <div class="bg-indigo-600 text-white p-4 rounded-lg mb-6 text-center">
+                        <h2 class="text-2xl font-bold">Year: <span id="currentYear"></span> | Day: <span id="currentDayType"></span></h2>
+                    </div>
+
+                    <div class="max-w-3xl mx-auto">
+                        <!-- Data Entry -->
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800 mb-4">Enter Numbers Manually</h3>
+                            <p class="text-gray-600 mb-4">
+                                Enter number combinations (one per line).
+                                <br />
+                                <span class="text-sm font-mono text-green-600">Format: 74-44-89-10-84</span>
+                            </p>
+                            
+                            <textarea 
+                                id="dataEntry"
+                                placeholder="Enter numbers manually:&#10;74-44-89-10-84&#10;20-52-8-79-61&#10;75-53-10-39-86"
+                                class="w-full h-96 p-4 border-2 border-gray-300 rounded-lg font-mono text-sm focus:border-indigo-500 focus:outline-none"
+                            ></textarea>
+                            
+                            <button 
+                                id="saveDataBtn"
+                                class="mt-4 bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition w-full"
+                            >
+                                💾 Save Numbers to Database
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Status Messages -->
+                    <div id="statusMessage" class="mt-6 hidden"></div>
+
+                    <!-- Saved Events Display -->
+                    <div id="eventsDisplay" class="mt-6 hidden">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">Saved Numbers for <span id="displayYear"></span>:</h3>
+                        <div class="bg-gray-50 border-2 border-gray-300 rounded-lg p-4 max-h-64 overflow-y-auto">
+                            <pre id="eventsText" class="font-mono text-sm whitespace-pre-wrap"></pre>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2">
+                            Total number combinations saved: <span id="numberCount" class="font-bold">0</span>
+                        </p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex gap-4 justify-center flex-wrap mt-6">
+                        <button 
+                            id="clearFormBtn"
+                            class="bg-gray-500 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-600 transition"
+                        >
+                            Clear Form
+                        </button>
+                        <button 
+                            id="doneYearBtn"
+                            class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+                        >
+                            Done with this Year
+                        </button>
+                        <button 
+                            id="doneAllBtn"
+                            class="bg-red-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-red-700 transition"
+                        >
+                            Done Uploading All Years
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Summary View -->
+                <div id="summaryView" class="hidden">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Upload Complete!</h2>
+                    
+                    <div class="bg-green-50 border-2 border-green-200 rounded-lg p-6 text-center mb-6">
+                        <p class="text-xl font-semibold text-green-800">
+                            All numbers have been saved to Supabase database!
+                        </p>
+                        <p class="text-gray-600 mt-2">
+                            Total combinations saved: <span id="totalNumbersSaved" class="font-bold">0</span>
+                        </p>
+                    </div>
+
+                    <div id="yearSummaries" class="space-y-6"></div>
+
+                    <div class="mt-8 text-center">
+                        <button 
+                            id="resetBtn"
+                            class="bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-700 transition"
+                        >
+                            Start Over
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ANALYSIS TAB -->
+            <div id="analysisSection" class="hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Winning Numbers Analysis</h2>
+                
+                <div class="max-w-3xl mx-auto">
+                    <!-- Winning Numbers Input -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">Select Day Type to Analyze</label>
+                        <select 
+                            id="analysisDayTypeSelect"
+                            class="w-full p-4 border-2 border-gray-300 rounded-lg text-lg focus:border-indigo-500 focus:outline-none"
+                        >
+                            <option value="">-- Select Day Type --</option>
+                            <option value="Monday Special">Monday Special</option>
+                            <option value="Lucky Tuesday">Lucky Tuesday</option>
+                            <option value="Mid Week">Mid Week</option>
+                            <option value="Fortune Thursday">Fortune Thursday</option>
+                            <option value="Friday Bonanza">Friday Bonanza</option>
+                            <option value="National">National</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">Enter Winning Numbers</label>
+                        <p class="text-sm text-gray-600 mb-2">Format: 88-74-57-60-8 (numbers separated by hyphens)</p>
+                        <input 
+                            type="text" 
+                            id="winningNumbersInput"
+                            placeholder="e.g., 88-74-57-60-8"
+                            class="w-full p-4 border-2 border-gray-300 rounded-lg text-lg font-mono focus:border-indigo-500 focus:outline-none"
+                        />
+                    </div>
+
+                    <button 
+                        id="analyzeBtn"
+                        class="w-full bg-indigo-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition mb-4"
+                    >
+                        🔍 Analyze Matches
+                    </button>
+
+                    <div id="analysisStatus" class="hidden mb-6"></div>
+
+                    <!-- Analysis Results -->
+                    <div id="analysisResults" class="hidden">
+                        <div class="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300 rounded-lg p-6 mb-6">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4">Analysis Summary</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-white p-4 rounded-lg">
+                                    <p class="text-sm text-gray-600">Total Combinations Analyzed</p>
+                                    <p class="text-2xl font-bold text-indigo-600" id="totalAnalyzed">0</p>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg">
+                                    <p class="text-sm text-gray-600">Combinations with Matches</p>
+                                    <p class="text-2xl font-bold text-green-600" id="totalMatches">0</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-4 mb-6">
+                            <button 
+                                id="downloadAnalysisPdfBtn"
+                                class="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition"
+                            >
+                                Download Analysis PDF
+                            </button>
+                            <button 
+                                id="downloadAnalysisHtmlBtn"
+                                class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+                            >
+                                Download as HTML
+                            </button>
+                        </div>
+
+                        <!-- Top 5 Years Analysis -->
+                        <div id="top5YearsSection" class="mb-6 p-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-lg">
+                            <h3 class="text-2xl font-bold text-gray-800 mb-4">Top 5 Years with Most Matches</h3>
+                            <p class="text-sm text-gray-600 mb-4">Years ranked by number of combinations with at least one matching number</p>
+                            <div id="top5YearsDisplay" class="space-y-3"></div>
+                            
+                            <button 
+                                id="downloadTop5PdfBtn"
+                                class="mt-6 w-full bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-700 transition"
+                            >
+                                Download Top 5 Years Report (PDF)
+                            </button>
+                        </div>
+
+                        <!-- Top 6-10 Years Analysis -->
+                        <div id="top6to10YearsSection" class="mb-6 p-6 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300 rounded-lg">
+                            <h3 class="text-2xl font-bold text-gray-800 mb-4">Years 6-10 with Most Matches</h3>
+                            <p class="text-sm text-gray-600 mb-4">Next highest ranked years by number of combinations with matches</p>
+                            <div id="top6to10YearsDisplay" class="space-y-3"></div>
+                            
+                            <button 
+                                id="downloadTop6to10PdfBtn"
+                                class="mt-6 w-full bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition"
+                            >
+                                Download Years 6-10 Report (PDF)
+                            </button>
+                        </div>
+
+                        <div id="analysisResultsDisplay" class="space-y-6 max-h-[600px] overflow-y-auto"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EXPORT TAB -->
+            <div id="exportSection" class="hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Export Database to PDF</h2>
+                
+                <div class="max-w-3xl mx-auto">
+                    <div class="mb-8 p-6 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-lg">
+                        <h3 class="text-xl font-bold text-purple-900 mb-4">Generate Complete Data Report</h3>
+                        <p class="text-gray-700 mb-4">Generate a PDF report of all years and combinations for a specific day type</p>
+                        
+                        <div class="mb-4">
+                            <label class="block text-gray-700 font-semibold mb-2">Select Day Type</label>
+                            <select 
+                                id="exportDayTypeSelect"
+                                class="w-full p-4 border-2 border-purple-300 rounded-lg text-lg focus:border-purple-500 focus:outline-none"
+                            >
+                                <option value="">-- Select Day Type --</option>
+                                <option value="Monday Special">Monday Special</option>
+                                <option value="Lucky Tuesday">Lucky Tuesday</option>
+                                <option value="Mid Week">Mid Week</option>
+                                <option value="Fortune Thursday">Fortune Thursday</option>
+                                <option value="Friday Bonanza">Friday Bonanza</option>
+                                <option value="National">National</option>
+                            </select>
+                        </div>
+
+                        <button 
+                            id="exportPdfBtn"
+                            class="w-full bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition"
+                        >
+                            Generate Report
+                        </button>
+                        
+                        <div id="exportStatus" class="mt-4 hidden"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STRATEGY ANALYSIS TAB -->
+            <div id="strategySection" class="hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Strategy Analysis</h2>
+                
+                <div class="max-w-5xl mx-auto">
+                    <!-- Strategy Selection -->
+                    <div class="mb-6 p-6 bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-cyan-300 rounded-lg">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">Select Strategy</h3>
+                        
+                        <div class="mb-4">
+                            <label class="block text-gray-700 font-semibold mb-2">Day Type</label>
+                            <select 
+                                id="strategyDayTypeSelect"
+                                class="w-full p-4 border-2 border-gray-300 rounded-lg text-lg focus:border-indigo-500 focus:outline-none"
+                            >
+                                <option value="">-- Select Day Type --</option>
+                                <option value="Monday Special">Monday Special</option>
+                                <option value="Lucky Tuesday">Lucky Tuesday</option>
+                                <option value="Mid Week">Mid Week</option>
+                                <option value="Fortune Thursday">Fortune Thursday</option>
+                                <option value="Friday Bonanza">Friday Bonanza</option>
+                                <option value="National">National</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-gray-700 font-semibold mb-2">Previous Week's Winning Numbers</label>
+                            <p class="text-sm text-gray-600 mb-2">Format: 88-74-57-60-8</p>
+                            <input 
+                                type="text" 
+                                id="strategyWinningNumbersInput"
+                                placeholder="e.g., 88-74-57-60-8"
+                                class="w-full p-4 border-2 border-gray-300 rounded-lg text-lg font-mono focus:border-indigo-500 focus:outline-none"
+                            />
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-gray-700 font-semibold mb-2">Select Strategy</label>
+                            <select 
+                                id="strategyTypeSelect"
+                                class="w-full p-4 border-2 border-gray-300 rounded-lg text-lg focus:border-indigo-500 focus:outline-none"
+                            >
+                                <option value="">-- Select Strategy --</option>
+                                <option value="A">Strategy A (Tally Card Analysis)</option>
+                                <option value="B">Strategy B (Coming Soon)</option>
+                                <option value="3X3">Strategy 3X3 (Coming Soon)</option>
+                                <option value="Signature">Strategy Signature (Coming Soon)</option>
+                                <option value="Top1">Strategy Top 1 (Coming Soon)</option>
+                                <option value="Top2">Strategy Top 2 (Coming Soon)</option>
+                            </select>
+                        </div>
+
+                        <button 
+                            id="runStrategyBtn"
+                            class="w-full bg-cyan-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-cyan-700 transition"
+                        >
+                            Run Strategy Analysis
+                        </button>
+
+                        <div id="strategyStatus" class="mt-4 hidden"></div>
+                    </div>
+
+                    <!-- Strategy Results -->
+                    <div id="strategyResults" class="hidden">
+                        <!-- Tally Card Display -->
+                        <div class="mb-6 p-6 bg-white border-2 border-gray-300 rounded-lg">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4">Tally Card (1-90)</h3>
+                            <p class="text-sm text-gray-600 mb-4">Numbers with frequency count from Top 5 years</p>
+                            <div id="tallyCardDisplay" class="grid grid-cols-10 gap-2"></div>
+                        </div>
+
+                        <!-- Frequency Breakdown -->
+                        <div class="mb-6 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4">Frequency Breakdown</h3>
+                            
+                            <div id="frequency5Display" class="mb-4">
+                                <h4 class="font-bold text-lg text-red-700 mb-2">Numbers appearing 5 times:</h4>
+                                <div class="bg-white p-4 rounded-lg" id="freq5Numbers"></div>
+                            </div>
+
+                            <div id="frequency4Display" class="mb-4">
+                                <h4 class="font-bold text-lg text-orange-700 mb-2">Numbers appearing 4 times:</h4>
+                                <div class="bg-white p-4 rounded-lg" id="freq4Numbers"></div>
+                            </div>
+
+                            <div id="frequency3Display" class="mb-4">
+                                <h4 class="font-bold text-lg text-yellow-700 mb-2">Numbers appearing 3 times:</h4>
+                                <div class="bg-white p-4 rounded-lg" id="freq3Numbers"></div>
+                            </div>
+                        </div>
+
+                        <!-- Year-by-Year Breakdown -->
+                        <div class="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-lg">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4">Year-by-Year Analysis</h3>
+                            <p class="text-sm text-gray-600 mb-4">How many times each frequent number (3+ occurrences) appeared in each year</p>
+                            <div id="yearBreakdownDisplay"></div>
+                        </div>
+
+                        <!-- Download Button -->
+                        <button 
+                            id="downloadStrategyPdfBtn"
+                            class="w-full bg-indigo-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
+                        >
+                            Download Strategy Analysis PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://pnabplafndykaszkxnnl.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBuYWJwbGFmbmR5a2Fzemt4bm5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyMTg4ODcsImV4cCI6MjA4NDc5NDg4N30.RfNcet7jwHlwqnrk1R1njZVFkwS-ip5kdFrHh2bud7M';
+        
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Global state
+        let allYearsData = {};
+        let currentYear = null;
+        let startYear = null;
+        let currentDayType = null;
+        let totalSavedCount = 0;
+        let currentYearNumberCount = 0;
+        let analysisData = null;
+
+        // Tab switching
+        function switchTab(tab) {
+            // Hide all sections
+            document.getElementById('uploadSection').classList.add('hidden');
+            document.getElementById('analysisSection').classList.add('hidden');
+            document.getElementById('exportSection').classList.add('hidden');
+            document.getElementById('strategySection').classList.add('hidden');
+
+            // Remove active state from all tabs
+            document.getElementById('uploadTab').className = 'flex-1 px-6 py-4 font-semibold text-gray-600 hover:text-indigo-600';
+            document.getElementById('analysisTab').className = 'flex-1 px-6 py-4 font-semibold text-gray-600 hover:text-indigo-600';
+            document.getElementById('exportTab').className = 'flex-1 px-6 py-4 font-semibold text-gray-600 hover:text-indigo-600';
+            document.getElementById('strategyTab').className = 'flex-1 px-6 py-4 font-semibold text-gray-600 hover:text-indigo-600';
+
+            // Show selected section and activate tab
+            if (tab === 'upload') {
+                document.getElementById('uploadSection').classList.remove('hidden');
+                document.getElementById('uploadTab').className = 'flex-1 px-6 py-4 font-semibold text-indigo-600 border-b-2 border-indigo-600';
+            } else if (tab === 'analysis') {
+                document.getElementById('analysisSection').classList.remove('hidden');
+                document.getElementById('analysisTab').className = 'flex-1 px-6 py-4 font-semibold text-indigo-600 border-b-2 border-indigo-600';
+            } else if (tab === 'export') {
+                document.getElementById('exportSection').classList.remove('hidden');
+                document.getElementById('exportTab').className = 'flex-1 px-6 py-4 font-semibold text-indigo-600 border-b-2 border-indigo-600';
+            } else if (tab === 'strategy') {
+                document.getElementById('strategySection').classList.remove('hidden');
+                document.getElementById('strategyTab').className = 'flex-1 px-6 py-4 font-semibold text-indigo-600 border-b-2 border-indigo-600';
+            }
+        }
+
+        // Initialize event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const startUploadBtn = document.getElementById('startUploadBtn');
+            const exportPdfBtn = document.getElementById('exportPdfBtn');
+            const saveDataBtn = document.getElementById('saveDataBtn');
+            const clearFormBtn = document.getElementById('clearFormBtn');
+            const doneYearBtn = document.getElementById('doneYearBtn');
+            const doneAllBtn = document.getElementById('doneAllBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const downloadAnalysisPdfBtn = document.getElementById('downloadAnalysisPdfBtn');
+            const downloadAnalysisHtmlBtn = document.getElementById('downloadAnalysisHtmlBtn');
+            const downloadTop5PdfBtn = document.getElementById('downloadTop5PdfBtn');
+            const downloadTop6to10PdfBtn = document.getElementById('downloadTop6to10PdfBtn');
+            const runStrategyBtn = document.getElementById('runStrategyBtn');
+            const downloadStrategyPdfBtn = document.getElementById('downloadStrategyPdfBtn');
+
+            startUploadBtn.addEventListener('click', startUpload);
+            exportPdfBtn.addEventListener('click', exportToPdf);
+            saveDataBtn.addEventListener('click', saveData);
+            clearFormBtn.addEventListener('click', clearForm);
+            doneYearBtn.addEventListener('click', doneWithYear);
+            doneAllBtn.addEventListener('click', finishAllUploads);
+            resetBtn.addEventListener('click', resetApp);
+            analyzeBtn.addEventListener('click', analyzeWinningNumbers);
+            downloadAnalysisPdfBtn.addEventListener('click', downloadAnalysisPdf);
+            downloadAnalysisHtmlBtn.addEventListener('click', downloadAnalysisHtml);
+            downloadTop5PdfBtn.addEventListener('click', downloadTop5Pdf);
+            downloadTop6to10PdfBtn.addEventListener('click', downloadTop6to10Pdf);
+            runStrategyBtn.addEventListener('click', runStrategyAnalysis);
+            downloadStrategyPdfBtn.addEventListener('click', downloadStrategyPdf);
+
+            initializeDatabase();
+        });
+
+        // Initialize database
+        async function initializeDatabase() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('sika_numbers')
+                    .select('count')
+                    .limit(1);
+                
+                if (error && error.code === '42P01') {
+                    alert('Database table not found!\n\nPlease create the "sika_numbers" table in your Supabase dashboard.');
+                }
+            } catch (err) {
+                console.error('Connection error:', err);
+            }
+        }
+
+        // Analyze winning numbers
+        async function analyzeWinningNumbers() {
+            const dayType = document.getElementById('analysisDayTypeSelect').value;
+            const winningNumbers = document.getElementById('winningNumbersInput').value.trim();
+
+            if (!dayType) {
+                showAnalysisStatus('Please select a day type', 'error');
+                return;
+            }
+
+            if (!winningNumbers) {
+                showAnalysisStatus('Please enter winning numbers', 'error');
+                return;
+            }
+
+            // Validate winning numbers format
+            if (!winningNumbers.match(/^\d{1,2}(-\d{1,2})+$/)) {
+                showAnalysisStatus('Invalid format. Use numbers separated by hyphens (e.g., 88-74-57-60-8)', 'error');
+                return;
+            }
+
+            showAnalysisStatus('Fetching data from database...', 'info');
+
+            try {
+                // Fetch all data for the selected day type
+                const { data, error } = await supabaseClient
+                    .from('sika_numbers')
+                    .select('year, number')
+                    .eq('day_type', dayType)
+                    .order('year', { ascending: true })
+                    .order('id', { ascending: true });
+
+                if (error) {
+                    throw new Error('Database error: ' + error.message);
+                }
+
+                if (!data || data.length === 0) {
+                    showAnalysisStatus('No data found for ' + dayType, 'error');
+                    return;
+                }
+
+                // Parse winning numbers
+                const winningNumsArray = winningNumbers.split('-').map(n => n.trim());
+
+                // Analyze matches
+                const results = analyzeMatches(data, winningNumsArray, dayType, winningNumbers);
+                
+                // Store analysis data for download
+                analysisData = results;
+
+                // Display results
+                displayAnalysisResults(results);
+                showAnalysisStatus('Analysis complete!', 'success');
+
+            } catch (error) {
+                console.error('Analysis error:', error);
+                showAnalysisStatus('Error: ' + error.message, 'error');
+            }
+        }
+
+        // Analyze matches between winning numbers and database
+        function analyzeMatches(data, winningNums, dayType, winningNumbersStr) {
+            const resultsByYear = {};
+            let totalMatches = 0;
+
+            data.forEach(row => {
+                const combination = row.number;
+                const comboNums = combination.split('-');
+                
+                // Find matches
+                const matches = [];
+                comboNums.forEach((num, index) => {
+                    if (winningNums.includes(num)) {
+                        matches.push({ number: num, index: index });
+                    }
+                });
+
+                if (matches.length > 0) {
+                    totalMatches++;
+                    
+                    if (!resultsByYear[row.year]) {
+                        resultsByYear[row.year] = [];
+                    }
+
+                    resultsByYear[row.year].push({
+                        combination: combination,
+                        matches: matches,
+                        matchCount: matches.length
+                    });
+                }
+            });
+
+            return {
+                dayType: dayType,
+                winningNumbers: winningNumbersStr,
+                winningNumsArray: winningNums,
+                totalCombinations: data.length,
+                totalMatches: totalMatches,
+                resultsByYear: resultsByYear
+            };
+        }
+
+        // Display analysis results
+        function displayAnalysisResults(results) {
+            document.getElementById('totalAnalyzed').textContent = results.totalCombinations;
+            document.getElementById('totalMatches').textContent = results.totalMatches;
+
+            // Calculate and display top 5 years and top 6-10 years
+            displayTop5Years(results);
+            displayTop6to10Years(results);
+
+            const container = document.getElementById('analysisResultsDisplay');
+            container.innerHTML = '';
+
+            const years = Object.keys(results.resultsByYear).sort((a, b) => a - b);
+
+            years.forEach(year => {
+                const yearResults = results.resultsByYear[year];
+                
+                const yearDiv = document.createElement('div');
+                yearDiv.className = 'bg-white border-2 border-indigo-200 rounded-lg p-6';
+                
+                let html = `
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold text-indigo-900">
+                            Year ${year} - ${results.dayType} 
+                            <span class="text-green-600">(${yearResults.length} matches)</span>
+                        </h3>
+                        <button 
+                            onclick="toggleYearCombinations('year-${year}-combos')"
+                            class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition"
+                        >
+                            Show All Combinations
+                        </button>
+                    </div>
+                    <div id="year-${year}-combos" class="space-y-2 year-combos-container" style="max-height: 400px; overflow-y: auto;">
+                `;
+
+                yearResults.forEach((result, index) => {
+                    const highlightedCombo = highlightNumbers(result.combination, result.matches);
+                    html += `
+                        <div class="flex items-center gap-4 p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
+                            <span class="text-gray-600 font-semibold">${index + 1}.</span>
+                            <span class="font-mono text-lg flex-1">${highlightedCombo}</span>
+                            <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
+                                ${result.matchCount} match${result.matchCount > 1 ? 'es' : ''}
+                            </span>
+                        </div>
+                    `;
+                });
+
+                html += `</div>`;
+                yearDiv.innerHTML = html;
+                container.appendChild(yearDiv);
+            });
+
+            document.getElementById('analysisResults').classList.remove('hidden');
+        }
+
+        // Toggle year combinations visibility
+        function toggleYearCombinations(elementId) {
+            const element = document.getElementById(elementId);
+            const button = event.target;
+            
+            if (element.style.maxHeight && element.style.maxHeight !== 'none') {
+                element.style.maxHeight = 'none';
+                element.style.overflowY = 'visible';
+                button.textContent = 'Collapse Combinations';
+            } else {
+                element.style.maxHeight = '400px';
+                element.style.overflowY = 'auto';
+                button.textContent = 'Show All Combinations';
+            }
+        }
+
+        // Display Top 5 Years
+        function displayTop5Years(results) {
+            const yearStats = [];
+            
+            // Calculate stats for each year
+            Object.keys(results.resultsByYear).forEach(year => {
+                const yearResults = results.resultsByYear[year];
+                yearStats.push({
+                    year: parseInt(year),
+                    matchCount: yearResults.length
+                });
+            });
+
+            // Sort by match count (descending), then by year (ascending) for ties
+            yearStats.sort((a, b) => {
+                if (b.matchCount !== a.matchCount) {
+                    return b.matchCount - a.matchCount;
+                }
+                return a.year - b.year;
+            });
+
+            // Take top 5
+            const top5 = yearStats.slice(0, 5);
+
+            // Display
+            const container = document.getElementById('top5YearsDisplay');
+            container.innerHTML = '';
+
+            top5.forEach((stat, index) => {
+                const rankColors = [
+                    'from-yellow-400 to-yellow-500', // 1st
+                    'from-gray-300 to-gray-400',     // 2nd
+                    'from-orange-400 to-orange-500', // 3rd
+                    'from-blue-300 to-blue-400',     // 4th
+                    'from-green-300 to-green-400'    // 5th
+                ];
+
+                const div = document.createElement('div');
+                div.className = `flex items-center gap-4 p-4 bg-gradient-to-r ${rankColors[index]} rounded-lg shadow-md`;
+                div.innerHTML = `
+                    <div class="text-3xl font-bold text-white">
+                        ${index + 1}
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-xl font-bold text-white">Year ${stat.year}</div>
+                        <div class="text-sm text-white opacity-90">${stat.matchCount} combination${stat.matchCount > 1 ? 's' : ''} with matches</div>
+                    </div>
+                    <div class="text-3xl font-bold text-white">${stat.matchCount}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Display Top 6-10 Years
+        function displayTop6to10Years(results) {
+            const yearStats = [];
+            
+            // Calculate stats for each year
+            Object.keys(results.resultsByYear).forEach(year => {
+                const yearResults = results.resultsByYear[year];
+                yearStats.push({
+                    year: parseInt(year),
+                    matchCount: yearResults.length
+                });
+            });
+
+            // Sort by match count (descending), then by year (ascending) for ties
+            yearStats.sort((a, b) => {
+                if (b.matchCount !== a.matchCount) {
+                    return b.matchCount - a.matchCount;
+                }
+                return a.year - b.year;
+            });
+
+            // Take positions 6-10 (indices 5-9)
+            const top6to10 = yearStats.slice(5, 10);
+
+            // Display
+            const container = document.getElementById('top6to10YearsDisplay');
+            container.innerHTML = '';
+
+            if (top6to10.length === 0) {
+                container.innerHTML = '<p class="text-gray-600 text-center">Not enough data for ranks 6-10</p>';
+                return;
+            }
+
+            top6to10.forEach((stat, index) => {
+                const rankColors = [
+                    'from-teal-300 to-teal-400',     // 6th
+                    'from-cyan-300 to-cyan-400',     // 7th
+                    'from-sky-300 to-sky-400',       // 8th
+                    'from-violet-300 to-violet-400', // 9th
+                    'from-fuchsia-300 to-fuchsia-400' // 10th
+                ];
+
+                const div = document.createElement('div');
+                div.className = `flex items-center gap-4 p-4 bg-gradient-to-r ${rankColors[index]} rounded-lg shadow-md`;
+                div.innerHTML = `
+                    <div class="text-3xl font-bold text-white">
+                        ${index + 6}
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-xl font-bold text-white">Year ${stat.year}</div>
+                        <div class="text-sm text-white opacity-90">${stat.matchCount} combination${stat.matchCount > 1 ? 's' : ''} with matches</div>
+                    </div>
+                    <div class="text-3xl font-bold text-white">${stat.matchCount}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Highlight matching numbers in a combination
+        function highlightNumbers(combination, matches) {
+            const nums = combination.split('-');
+            const matchIndices = matches.map(m => m.index);
+            
+            return nums.map((num, index) => {
+                if (matchIndices.includes(index)) {
+                    return `<span class="bg-yellow-300 font-bold text-red-700 px-1 rounded">${num}</span>`;
+                }
+                return num;
+            }).join('-');
+        }
+
+        // Download Complete Analysis PDF - Shows ALL combinations
+        async function downloadAnalysisPdf() {
+            if (!analysisData) {
+                alert('No analysis data available');
+                return;
+            }
+
+            showAnalysisStatus('Fetching all combinations from database...', 'info');
+
+            try {
+                // Fetch ALL combinations for the selected day type
+                const { data: allData, error } = await supabaseClient
+                    .from('sika_numbers')
+                    .select('year, number')
+                    .eq('day_type', analysisData.dayType)
+                    .order('year', { ascending: true })
+                    .order('id', { ascending: true });
+
+                if (error) {
+                    throw new Error('Database error: ' + error.message);
+                }
+
+                showAnalysisStatus('Generating comprehensive PDF...', 'info');
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                let yPosition = 20;
+                const pageHeight = doc.internal.pageSize.height;
+                const marginBottom = 20;
+                const lineHeight = 7;
+
+                // Title
+                doc.setFontSize(23);
+                doc.setFont(undefined, 'bold');
+                doc.text('Winning Numbers Analysis Report', 105, yPosition, { align: 'center' });
+                
+                yPosition += 10;
+                doc.setFontSize(12);
+                doc.text(`Day Type: ${analysisData.dayType}`, 105, yPosition, { align: 'center' });
+                
+                yPosition += 7;
+                doc.text(`Winning Numbers: ${analysisData.winningNumbers}`, 105, yPosition, { align: 'center' });
+                
+                yPosition += 7;
+                doc.setFontSize(15);
+                doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, yPosition, { align: 'center' });
+                
+                yPosition += 5;
+                doc.text(`Total Analyzed: ${analysisData.totalCombinations} | Matches Found: ${analysisData.totalMatches}`, 105, yPosition, { align: 'center' });
+                
+                yPosition += 15;
+
+                // Organize all data by year
+                const allDataByYear = {};
+                allData.forEach(row => {
+                    if (!allDataByYear[row.year]) {
+                        allDataByYear[row.year] = [];
+                    }
+                    allDataByYear[row.year].push(row.number);
+                });
+
+                const years = Object.keys(allDataByYear).sort((a, b) => a - b);
+                
+                years.forEach(year => {
+                    const allCombinations = allDataByYear[year];
+                    const yearMatches = analysisData.resultsByYear[year] || [];
+                    const matchCount = yearMatches.length;
+                    
+                    // Check if we need a new page
+                    if (yPosition + 30 > pageHeight - marginBottom) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+
+                    // Year header
+                    doc.setFontSize(14);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(`Year ${year} (${matchCount} matches)`, 20, yPosition);
+                    yPosition += 8;
+
+                    // Draw a line
+                    doc.setDrawColor(100, 100, 100);
+                    doc.line(20, yPosition, 190, yPosition);
+                    yPosition += 5;
+
+                    // Process ALL combinations
+                    doc.setFontSize(15);
+                    
+                    allCombinations.forEach((combination, index) => {
+                        if (yPosition > pageHeight - marginBottom) {
+                            doc.addPage();
+                            yPosition = 20;
+                        }
+
+                        // Check if this combination has matches
+                        const matchData = yearMatches.find(m => m.combination === combination);
+                        const hasMatch = !!matchData;
+
+                        // Display index
+                        doc.setFont(undefined, 'normal');
+                        if (hasMatch) {
+                            doc.setTextColor(0, 0, 0);
+                        } else {
+                            doc.setTextColor(150, 150, 150); // Gray for non-matches
+                        }
+                        doc.text(`${index + 1}. `, 25, yPosition);
+
+                        // Display combination
+                        const nums = combination.split('-');
+                        let xPosition = 35;
+
+                        if (hasMatch) {
+                            // Has matches - highlight them
+                            const matchIndices = matchData.matches.map(m => m.index);
+                            
+                            nums.forEach((num, idx) => {
+                                if (matchIndices.includes(idx)) {
+                                    // Matched number - bold and red with yellow highlight
+                                    doc.setFont(undefined, 'bold');
+                                    doc.setTextColor(220, 38, 38);
+                                    
+                                    const textWidth = doc.getTextWidth(num);
+                                    doc.setFillColor(254, 240, 138);
+                                    doc.rect(xPosition - 1, yPosition - 4, textWidth + 2, 5, 'F');
+                                    
+                                    doc.text(num, xPosition, yPosition);
+                                } else {
+                                    // Normal number in matching combination
+                                    doc.setFont(undefined, 'normal');
+                                    doc.setTextColor(0, 0, 0);
+                                    doc.text(num, xPosition, yPosition);
+                                }
+                                
+                                xPosition += doc.getTextWidth(num);
+                                
+                                if (idx < nums.length - 1) {
+                                    doc.setFont(undefined, 'normal');
+                                    doc.setTextColor(0, 0, 0);
+                                    doc.text('-', xPosition, yPosition);
+                                    xPosition += doc.getTextWidth('-');
+                                }
+                            });
+
+                            // Add match count badge
+                            doc.setFont(undefined, 'bold');
+                            doc.setTextColor(5, 150, 105);
+                            const matchText = `  [${matchData.matchCount} match${matchData.matchCount > 1 ? 'es' : ''}]`;
+                            doc.text(matchText, xPosition + 2, yPosition);
+                        } else {
+                            // No matches - display in gray
+                            doc.setFont(undefined, 'normal');
+                            doc.setTextColor(150, 150, 150);
+                            doc.text(combination, xPosition, yPosition);
+                        }
+                        
+                        // Reset to normal
+                        doc.setTextColor(0, 0, 0);
+                        doc.setFont(undefined, 'normal');
+                        
+                        yPosition += lineHeight;
+                    });
+
+                    yPosition += 8;
+                });
+
+                // Footer
+                doc.setFontSize(15);
+                doc.setFont(undefined, 'italic');
+                const totalPages = doc.internal.pages.length - 1;
+                for (let i = 1; i <= totalPages; i++) {
+                    doc.setPage(i);
+                    doc.text(
+                        `Page ${i} of ${totalPages}`,
+                        105,
+                        pageHeight - 10,
+                        { align: 'center' }
+                    );
+                }
+
+                // Save
+                const fileName = `Sika_Analysis_${analysisData.dayType.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+                doc.save(fileName);
+
+                showAnalysisStatus('PDF generated successfully!', 'success');
+
+            } catch (error) {
+                console.error('PDF generation error:', error);
+                showAnalysisStatus('Error generating PDF: ' + error.message, 'error');
+            }
+        }
+
+        // Download Top 5 Years PDF - Shows ALL combinations
+        async function downloadTop5Pdf() {
+            if (!analysisData) {
+                alert('No analysis data available');
+                return;
+            }
+
+            showAnalysisStatus('Fetching all combinations from database...', 'info');
+
+            try {
+                // Fetch ALL combinations for the selected day type
+                const { data: allData, error } = await supabaseClient
+                    .from('sika_numbers')
+                    .select('year, number')
+                    .eq('day_type', analysisData.dayType)
+                    .order('year', { ascending: true })
+                    .order('id', { ascending: true });
+
+                if (error) {
+                    throw new Error('Database error: ' + error.message);
+                }
+
+                // Organize all data by year
+                const allDataByYear = {};
+                allData.forEach(row => {
+                    if (!allDataByYear[row.year]) {
+                        allDataByYear[row.year] = [];
+                    }
+                    allDataByYear[row.year].push(row.number);
+                });
+
+                showAnalysisStatus('Generating Top 5 PDF...', 'info');
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                let yPosition = 20;
+                const pageHeight = doc.internal.pageSize.height;
+                const marginBottom = 20;
+                const lineHeight = 7;
+
+                // Title
+                doc.setFontSize(20);
+                doc.setFont(undefined, 'bold');
+                doc.text('Top 5 Years - Winning Numbers Analysis', 105, yPosition, { align: 'center' });
+                
+                yPosition += 12;
+                doc.setFontSize(14);
+                doc.text(`Day Type: ${analysisData.dayType}`, 105, yPosition, { align: 'center' });
+                
+                yPosition += 8;
+                doc.text(`Winning Numbers: ${analysisData.winningNumbers}`, 105, yPosition, { align: 'center' });
+                
+                yPosition += 8;
+                doc.setFontSize(15);
+                doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, yPosition, { align: 'center' });
+                
+                yPosition += 15;
+
+                // Calculate top 5 years
+                const yearStats = [];
+                Object.keys(analysisData.resultsByYear).forEach(year => {
+                    const yearResults = analysisData.resultsByYear[year];
+                    yearStats.push({
+                        year: parseInt(year),
+                        matchCount: yearResults.length,
+                        results: yearResults
+                    });
+                });
+
+                yearStats.sort((a, b) => {
+                    if (b.matchCount !== a.matchCount) {
+                        return b.matchCount - a.matchCount;
+                    }
+                    return a.year - b.year;
+                });
+
+                const top5 = yearStats.slice(0, 5);
+
+                // Top 5 Summary Box
+                doc.setFillColor(255, 251, 235);
+                doc.rect(15, yPosition, 180, 60, 'F');
+                doc.setDrawColor(251, 191, 36);
+                doc.setLineWidth(2);
+                doc.rect(15, yPosition, 180, 60);
+                
+                yPosition += 10;
+                doc.setFontSize(16);
+                doc.setFont(undefined, 'bold');
+                doc.text('Top 5 Years Ranking', 105, yPosition, { align: 'center' });
+                
+                yPosition += 10;
+                doc.setFontSize(15);
+                doc.setFont(undefined, 'normal');
+
+                top5.forEach((stat, index) => {
+                    doc.setFont(undefined, 'bold');
+                    doc.text(`${index + 1}. Year ${stat.year}`, 25, yPosition);
+                    doc.setFont(undefined, 'normal');
+                    doc.text(`${stat.matchCount} combinations with matches`, 80, yPosition);
+                    yPosition += 7;
+                });
+
+                yPosition += 15;
+
+                // Detailed results for each top 5 year - SHOW ALL COMBINATIONS
+                top5.forEach((stat, rankIndex) => {
+                    const allCombinations = allDataByYear[stat.year] || [];
+                    const yearMatches = stat.results;
+                    
+                    // Check if we need a new page
+                    if (yPosition + 40 > pageHeight - marginBottom) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+
+                    // Year header with rank
+                    doc.setFontSize(16);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(`Rank ${rankIndex + 1} - Year ${stat.year}`, 20, yPosition);
+                    
+                    yPosition += 8;
+                    doc.setFontSize(12);
+                    doc.setFont(undefined, 'normal');
+                    doc.text(`${stat.matchCount} combinations with matching numbers`, 20, yPosition);
+                    
+                    yPosition += 8;
+                    doc.setDrawColor(100, 100, 100);
+                    doc.line(20, yPosition, 190, yPosition);
+                    yPosition += 8;
+
+                    // Display ALL combinations
+                    doc.setFontSize(15);
+                    
+                    allCombinations.forEach((combination, index) => {
+                        if (yPosition > pageHeight - marginBottom) {
+                            doc.addPage();
+                            yPosition = 20;
+                        }
+
+                        // Check if this combination has matches
+                        const matchData = yearMatches.find(m => m.combination === combination);
+                        const hasMatch = !!matchData;
+
+                        // Display index
+                        doc.setFont(undefined, 'normal');
+                        if (hasMatch) {
+                            doc.setTextColor(0, 0, 0);
+                        } else {
+                            doc.setTextColor(150, 150, 150);
+                        }
+                        doc.text(`${index + 1}. `, 25, yPosition);
+
+                        // Display combination
+                        const nums = combination.split('-');
+                        let xPosition = 35;
+
+                        if (hasMatch) {
+                            const matchIndices = matchData.matches.map(m => m.index);
+                            
+                            nums.forEach((num, idx) => {
+                                if (matchIndices.includes(idx)) {
+                                    doc.setFont(undefined, 'bold');
+                                    doc.setTextColor(220, 38, 38);
+                                    
+                                    const textWidth = doc.getTextWidth(num);
+                                    doc.setFillColor(254, 240, 138);
+                                    doc.rect(xPosition - 1, yPosition - 4, textWidth + 2, 5, 'F');
+                                    
+                                    doc.text(num, xPosition, yPosition);
+                                } else {
+                                    doc.setFont(undefined, 'normal');
+                                    doc.setTextColor(0, 0, 0);
+                                    doc.text(num, xPosition, yPosition);
+                                }
+                                
+                                xPosition += doc.getTextWidth(num);
+                                
+                                if (idx < nums.length - 1) {
+                                    doc.setFont(undefined, 'normal');
+                                    doc.setTextColor(0, 0, 0);
+                                    doc.text('-', xPosition, yPosition);
+                                    xPosition += doc.getTextWidth('-');
+                                }
+                            });
+
+                            doc.setFont(undefined, 'bold');
+                            doc.setTextColor(5, 150, 105);
+                            const matchText = `  [${matchData.matchCount} match${matchData.matchCount > 1 ? 'es' : ''}]`;
+                            doc.text(matchText, xPosition + 2, yPosition);
+                        } else {
+                            doc.setFont(undefined, 'normal');
+                            doc.setTextColor(150, 150, 150);
+                            doc.text(combination, xPosition, yPosition);
+                        }
+                        
+                        doc.setTextColor(0, 0, 0);
+                        doc.setFont(undefined, 'normal');
+                        
+                        yPosition += lineHeight;
+                    });
+
+                    yPosition += 12;
+                });
+
+                // Footer
+                doc.setFontSize(15);
+                doc.setFont(undefined, 'italic');
+                const totalPages = doc.internal.pages.length - 1;
+                for (let i = 1; i <= totalPages; i++) {
+                    doc.setPage(i);
+                    doc.text(
+                        `Top 5 Years Report | Page ${i} of ${totalPages}`,
+                        105,
+                        pageHeight - 10,
+                        { align: 'center' }
+                    );
+                }
+
+                // Save
+                const fileName = `Sika_Top5Years_${analysisData.dayType.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+                doc.save(fileName);
+
+                showAnalysisStatus('Top 5 PDF generated successfully!', 'success');
+
+            } catch (error) {
+                console.error('PDF generation error:', error);
+                showAnalysisStatus('Error generating PDF: ' + error.message, 'error');
+            }
+        }
+
+        // Download Top 6-10 Years PDF - Shows ALL combinations
+        async function downloadTop6to10Pdf() {
+            if (!analysisData) {
+                alert('No analysis data available');
+                return;
+            }
+
+            showAnalysisStatus('Fetching all combinations from database...', 'info');
+
+            try {
+                // Fetch ALL combinations for the selected day type
+                const { data: allData, error } = await supabaseClient
+                    .from('sika_numbers')
+                    .select('year, number')
+                    .eq('day_type', analysisData.dayType)
+                    .order('year', { ascending: true })
+                    .order('id', { ascending: true });
+
+                if (error) {
+                    throw new Error('Database error: ' + error.message);
+                }
+
+                // Organize all data by year
+                const allDataByYear = {};
+                allData.forEach(row => {
+                    if (!allDataByYear[row.year]) {
+                        allDataByYear[row.year] = [];
+                    }
+                    allDataByYear[row.year].push(row.number);
+                });
+
+                showAnalysisStatus('Generating Years 6-10 PDF...', 'info');
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                let yPosition = 20;
+                const pageHeight = doc.internal.pageSize.height;
+                const marginBottom = 20;
+                const lineHeight = 7;
+
+                // Title
+                doc.setFontSize(20);
+                doc.setFont(undefined, 'bold');
+                doc.text('Years 6-10 - Winning Numbers Analysis', 105, yPosition, { align: 'center' });
+                
+                yPosition += 12;
+                doc.setFontSize(14);
+                doc.text(`Day Type: ${analysisData.dayType}`, 105, yPosition, { align: 'center' });
+                
+                yPosition += 8;
+                doc.text(`Winning Numbers: ${analysisData.winningNumbers}`, 105, yPosition, { align: 'center' });
+                
+                yPosition += 8;
+                doc.setFontSize(15);
+                doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, yPosition, { align: 'center' });
+                
+                yPosition += 15;
+
+                // Calculate all years stats
+                const yearStats = [];
+                Object.keys(analysisData.resultsByYear).forEach(year => {
+                    const yearResults = analysisData.resultsByYear[year];
+                    yearStats.push({
+                        year: parseInt(year),
+                        matchCount: yearResults.length,
+                        results: yearResults
+                    });
+                });
+
+                yearStats.sort((a, b) => {
+                    if (b.matchCount !== a.matchCount) {
+                        return b.matchCount - a.matchCount;
+                    }
+                    return a.year - b.year;
+                });
+
+                const top6to10 = yearStats.slice(5, 10);
+
+                if (top6to10.length === 0) {
+                    doc.setFontSize(14);
+                    doc.text('Not enough data for ranks 6-10', 105, yPosition, { align: 'center' });
+                    const fileName = `Sika_Years6-10_${analysisData.dayType.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+                    doc.save(fileName);
+                    showAnalysisStatus('Years 6-10 PDF generated successfully!', 'success');
+                    return;
+                }
+
+                // Top 6-10 Summary Box
+                doc.setFillColor(243, 232, 255);
+                doc.rect(15, yPosition, 180, 40 + (top6to10.length * 7), 'F');
+                doc.setDrawColor(168, 85, 247);
+                doc.setLineWidth(2);
+                doc.rect(15, yPosition, 180, 40 + (top6to10.length * 7));
+                
+                yPosition += 10;
+                doc.setFontSize(16);
+                doc.setFont(undefined, 'bold');
+                doc.text('Years 6-10 Ranking', 105, yPosition, { align: 'center' });
+                
+                yPosition += 10;
+                doc.setFontSize(15);
+                doc.setFont(undefined, 'normal');
+
+                top6to10.forEach((stat, index) => {
+                    doc.setFont(undefined, 'bold');
+                    doc.text(`${index + 6}. Year ${stat.year}`, 25, yPosition);
+                    doc.setFont(undefined, 'normal');
+                    doc.text(`${stat.matchCount} combinations with matches`, 80, yPosition);
+                    yPosition += 7;
+                });
+
+                yPosition += 15;
+
+                // Detailed results for each year 6-10 - SHOW ALL COMBINATIONS
+                top6to10.forEach((stat, rankIndex) => {
+                    const allCombinations = allDataByYear[stat.year] || [];
+                    const yearMatches = stat.results;
+                    
+                    // Check if we need a new page
+                    if (yPosition + 40 > pageHeight - marginBottom) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+
+                    // Year header with rank
+                    doc.setFontSize(16);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(`Rank ${rankIndex + 6} - Year ${stat.year}`, 20, yPosition);
+                    
+                    yPosition += 8;
+                    doc.setFontSize(12);
+                    doc.setFont(undefined, 'normal');
+                    doc.text(`${stat.matchCount} combinations with matching numbers`, 20, yPosition);
+                    
+                    yPosition += 8;
+                    doc.setDrawColor(100, 100, 100);
+                    doc.line(20, yPosition, 190, yPosition);
+                    yPosition += 8;
+
+                    // Display ALL combinations
+                    doc.setFontSize(15);
+                    
+                    allCombinations.forEach((combination, index) => {
+                        if (yPosition > pageHeight - marginBottom) {
+                            doc.addPage();
+                            yPosition = 20;
+                        }
+
+                        // Check if this combination has matches
+                        const matchData = yearMatches.find(m => m.combination === combination);
+                        const hasMatch = !!matchData;
+
+                        // Display index
+                        doc.setFont(undefined, 'normal');
+                        if (hasMatch) {
+                            doc.setTextColor(0, 0, 0);
+                        } else {
+                            doc.setTextColor(150, 150, 150);
+                        }
+                        doc.text(`${index + 1}. `, 25, yPosition);
+
+                        // Display combination
+                        const nums = combination.split('-');
+                        let xPosition = 35;
+
+                        if (hasMatch) {
+                            const matchIndices = matchData.matches.map(m => m.index);
+                            
+                            nums.forEach((num, idx) => {
+                                if (matchIndices.includes(idx)) {
+                                    doc.setFont(undefined, 'bold');
+                                    doc.setTextColor(220, 38, 38);
+                                    
+                                    const textWidth = doc.getTextWidth(num);
+                                    doc.setFillColor(254, 240, 138);
+                                    doc.rect(xPosition - 1, yPosition - 4, textWidth + 2, 5, 'F');
+                                    
+                                    doc.text(num, xPosition, yPosition);
+                                } else {
+                                    doc.setFont(undefined, 'normal');
+                                    doc.setTextColor(0, 0, 0);
+                                    doc.text(num, xPosition, yPosition);
+                                }
+                                
+                                xPosition += doc.getTextWidth(num);
+                                
+                                if (idx < nums.length - 1) {
+                                    doc.setFont(undefined, 'normal');
+                                    doc.setTextColor(0, 0, 0);
+                                    doc.text('-', xPosition, yPosition);
+                                    xPosition += doc.getTextWidth('-');
+                                }
+                            });
+
+                            doc.setFont(undefined, 'bold');
+                            doc.setTextColor(5, 150, 105);
+                            const matchText = `  [${matchData.matchCount} match${matchData.matchCount > 1 ? 'es' : ''}]`;
+                            doc.text(matchText, xPosition + 2, yPosition);
+                        } else {
+                            doc.setFont(undefined, 'normal');
+                            doc.setTextColor(150, 150, 150);
+                            doc.text(combination, xPosition, yPosition);
+                        }
+                        
+                        doc.setTextColor(0, 0, 0);
+                        doc.setFont(undefined, 'normal');
+                        
+                        yPosition += lineHeight;
+                    });
+
+                    yPosition += 12;
+                });
+
+                // Footer
+                doc.setFontSize(15);
+                doc.setFont(undefined, 'italic');
+                const totalPages = doc.internal.pages.length - 1;
+                for (let i = 1; i <= totalPages; i++) {
+                    doc.setPage(i);
+                    doc.text(
+                        `Years 6-10 Report | Page ${i} of ${totalPages}`,
+                        105,
+                        pageHeight - 10,
+                        { align: 'center' }
+                    );
+                }
+
+                // Save
+                const fileName = `Sika_Years6-10_${analysisData.dayType.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+                doc.save(fileName);
+
+                showAnalysisStatus('Years 6-10 PDF generated successfully!', 'success');
+
+            } catch (error) {
+                console.error('PDF generation error:', error);
+                showAnalysisStatus('Error generating PDF: ' + error.message, 'error');
+            }
+        }
+
+        // Download analysis as HTML
+        function downloadAnalysisHtml() {
+            if (!analysisData) {
+                alert('No analysis data available');
+                return;
+            }
+
+            let html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sika Winning Numbers Analysis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .summary {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .summary-item {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .summary-item .label {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        .summary-item .value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #4f46e5;
+        }
+        .year-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .year-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #4f46e5;
+        }
+        .match-count {
+            color: #10b981;
+            font-size: 18px;
+        }
+        .combination {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .combination:hover {
+            background: #f3f4f6;
+        }
+        .combo-number {
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            flex: 1;
+        }
+        .highlight {
+            background: #fef08a;
+            font-weight: bold;
+            color: #dc2626;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .badge {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .index {
+            color: #6b7280;
+            font-weight: 600;
+            min-width: 30px;
+        }
+        @media print {
+            body {
+                background: white;
+            }
+            .year-section {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Sika Winning Numbers Analysis</h1>
+        <p style="margin-top: 10px; font-size: 18px;">Day Type: ${analysisData.dayType}</p>
+        <p style="font-size: 16px;">Winning Numbers: ${analysisData.winningNumbers}</p>
+        <p style="font-size: 14px; margin-top: 10px;">Generated: ${new Date().toLocaleString()}</p>
+    </div>
+
+    <div class="summary">
+        <h2 style="margin-top: 0; margin-bottom: 20px;">Analysis Summary</h2>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="label">Total Combinations</div>
+                <div class="value">${analysisData.totalCombinations}</div>
+            </div>
+            <div class="summary-item">
+                <div class="label">Matches Found</div>
+                <div class="value" style="color: #10b981;">${analysisData.totalMatches}</div>
+            </div>
+            <div class="summary-item">
+                <div class="label">Match Rate</div>
+                <div class="value" style="color: #7c3aed;">${((analysisData.totalMatches / analysisData.totalCombinations) * 100).toFixed(1)}%</div>
+            </div>
+        </div>
+    </div>
+`;
+
+            const years = Object.keys(analysisData.resultsByYear).sort((a, b) => a - b);
+            
+            years.forEach(year => {
+                const yearResults = analysisData.resultsByYear[year];
+                
+                html += `
+    <div class="year-section">
+        <div class="year-title">
+            Year ${year} <span class="match-count">(${yearResults.length} matches)</span>
+        </div>
+`;
+
+                yearResults.forEach((result, index) => {
+                    const nums = result.combination.split('-');
+                    const matchIndices = result.matches.map(m => m.index);
+                    
+                    const highlightedNums = nums.map((num, idx) => {
+                        if (matchIndices.includes(idx)) {
+                            return `<span class="highlight">${num}</span>`;
+                        }
+                        return num;
+                    }).join('-');
+
+                    html += `
+        <div class="combination">
+            <span class="index">${index + 1}.</span>
+            <span class="combo-number">${highlightedNums}</span>
+            <span class="badge">${result.matchCount} match${result.matchCount > 1 ? 'es' : ''}</span>
+        </div>
+`;
+                });
+
+                html += `
+    </div>
+`;
+            });
+
+            html += `
+</body>
+</html>
+`;
+
+            // Create and download file
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Sika_Analysis_${analysisData.dayType.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Show analysis status
+        function showAnalysisStatus(message, type) {
+            const statusDiv = document.getElementById('analysisStatus');
+            statusDiv.className = 'p-4 rounded-lg ';
+            
+            if (type === 'success') {
+                statusDiv.className += 'bg-green-50 border-2 border-green-200 text-green-800';
+            } else if (type === 'error') {
+                statusDiv.className += 'bg-red-50 border-2 border-red-200 text-red-800';
+            } else {
+                statusDiv.className += 'bg-blue-50 border-2 border-blue-200 text-blue-800';
+            }
+            
+            statusDiv.textContent = message;
+            statusDiv.classList.remove('hidden');
+            
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    statusDiv.classList.add('hidden');
+                }, 5000);
+            }
+        }
+
+        // Export to PDF (original function)
+        async function exportToPdf() {
+            const dayType = document.getElementById('exportDayTypeSelect').value;
+            
+            if (!dayType) {
+                showExportStatus('Please select a day type', 'error');
+                return;
+            }
+
+            showExportStatus('Fetching data from database...', 'info');
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('sika_numbers')
+                    .select('year, number')
+                    .eq('day_type', dayType)
+                    .order('year', { ascending: true })
+                    .order('id', { ascending: true });
+
+                if (error) {
+                    throw new Error('Database error: ' + error.message);
+                }
+
+                if (!data || data.length === 0) {
+                    showExportStatus('No data found for ' + dayType, 'error');
+                    return;
+                }
+
+                showExportStatus('Generating PDF...', 'info');
+
+                const dataByYear = {};
+                data.forEach(row => {
+                    if (!dataByYear[row.year]) {
+                        dataByYear[row.year] = [];
+                    }
+                    dataByYear[row.year].push(row.number);
+                });
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                let yPosition = 20;
+                const pageHeight = doc.internal.pageSize.height;
+                const marginBottom = 20;
+                const lineHeight = 7;
+
+                doc.setFontSize(23);
+                doc.setFont(undefined, 'bold');
+                doc.text('Sika Chart Analysis Report', 105, yPosition, { align: 'center' });
+                
+                yPosition += 10;
+                doc.setFontSize(14);
+                doc.text(`Day Type: ${dayType}`, 105, yPosition, { align: 'center' });
+                
+                yPosition += 10;
+                doc.setFontSize(15);
+                doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, yPosition, { align: 'center' });
+                
+                yPosition += 15;
+
+                const years = Object.keys(dataByYear).sort((a, b) => a - b);
+                
+                years.forEach(year => {
+                    const numbers = dataByYear[year];
+                    
+                    if (yPosition + 30 > pageHeight - marginBottom) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+
+                    doc.setFontSize(14);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(`Year ${year} (${numbers.length} combinations)`, 20, yPosition);
+                    yPosition += 8;
+
+                    doc.setDrawColor(100, 100, 100);
+                    doc.line(20, yPosition, 190, yPosition);
+                    yPosition += 5;
+
+                    doc.setFontSize(15);
+                    doc.setFont(undefined, 'normal');
+                    
+                    numbers.forEach((number, index) => {
+                        if (yPosition > pageHeight - marginBottom) {
+                            doc.addPage();
+                            yPosition = 20;
+                        }
+
+                        doc.text(`${index + 1}. ${number}`, 25, yPosition);
+                        yPosition += lineHeight;
+                    });
+
+                    yPosition += 8;
+                });
+
+                doc.setFontSize(15);
+                doc.setFont(undefined, 'italic');
+                const totalPages = doc.internal.pages.length - 1;
+                for (let i = 1; i <= totalPages; i++) {
+                    doc.setPage(i);
+                    doc.text(
+                        `Total Combinations: ${data.length} | Page ${i} of ${totalPages}`,
+                        105,
+                        pageHeight - 10,
+                        { align: 'center' }
+                    );
+                }
+
+                const fileName = `Sika_${dayType.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+                doc.save(fileName);
+
+                showExportStatus('PDF generated successfully!', 'success');
+
+            } catch (error) {
+                console.error('Export error:', error);
+                showExportStatus('Error: ' + error.message, 'error');
+            }
+        }
+
+        function showExportStatus(message, type) {
+            const statusDiv = document.getElementById('exportStatus');
+            statusDiv.className = 'mt-4 p-4 rounded-lg ';
+            
+            if (type === 'success') {
+                statusDiv.className += 'bg-green-50 border-2 border-green-200 text-green-800';
+            } else if (type === 'error') {
+                statusDiv.className += 'bg-red-50 border-2 border-red-200 text-red-800';
+            } else {
+                statusDiv.className += 'bg-blue-50 border-2 border-blue-200 text-blue-800';
+            }
+            
+            statusDiv.textContent = message;
+            statusDiv.classList.remove('hidden');
+            
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    statusDiv.classList.add('hidden');
+                }, 5000);
+            }
+        }
+
+        // Upload functions
+        function startUpload() {
+            const yearInput = document.getElementById('startYearInput').value;
+            const dayType = document.getElementById('dayTypeSelect').value;
+            
+            if (!yearInput || yearInput < 2000 || yearInput > 2100) {
+                alert('Please enter a valid year between 2000 and 2100');
+                return;
+            }
+
+            if (!dayType) {
+                alert('Please select a day type');
+                return;
+            }
+
+            startYear = parseInt(yearInput);
+            currentYear = startYear;
+            currentDayType = dayType;
+            allYearsData[currentYear] = [];
+            currentYearNumberCount = 0;
+
+            document.getElementById('yearSelectionStep').classList.add('hidden');
+            document.getElementById('uploadInterface').classList.remove('hidden');
+            document.getElementById('currentYear').textContent = currentYear;
+            document.getElementById('currentDayType').textContent = currentDayType;
+            document.getElementById('displayYear').textContent = currentYear;
+        }
+
+        async function saveData() {
+            const dataEntry = document.getElementById('dataEntry').value.trim();
+            
+            if (!dataEntry) {
+                showStatus('Please enter some numbers first!', 'error');
+                return;
+            }
+
+            showStatus('Saving to database...', 'info');
+
+            try {
+                await parseAndSaveToDatabase(dataEntry);
+                showStatus('Numbers saved successfully!', 'success');
+            } catch (error) {
+                console.error('Save error:', error);
+                showStatus('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function parseAndSaveToDatabase(text) {
+            const lines = text.split('\n').filter(line => line.trim());
+            const numbersToSave = [];
+            
+            for (const line of lines) {
+                const cleanLine = line.trim();
+                
+                if (cleanLine.match(/^\d{1,2}(-\d{1,2})+$/)) {
+                    const parts = cleanLine.split('-');
+                    
+                    const allValid = parts.every(num => {
+                        const n = parseInt(num);
+                        return !isNaN(n) && n >= 0 && n <= 99;
+                    });
+                    
+                    if (allValid && parts.length >= 3) {
+                        numbersToSave.push({
+                            year: currentYear,
+                            day_type: currentDayType,
+                            number: cleanLine
+                        });
+                    }
+                }
+            }
+
+            if (numbersToSave.length === 0) {
+                throw new Error('No valid number combinations found. Format: 74-44-89-10-84');
+            }
+
+            const { data, error } = await supabaseClient
+                .from('sika_numbers')
+                .insert(numbersToSave);
+
+            if (error) {
+                throw new Error('Database error: ' + error.message);
+            }
+
+            allYearsData[currentYear] = allYearsData[currentYear].concat(lines);
+            currentYearNumberCount += numbersToSave.length;
+            totalSavedCount += numbersToSave.length;
+            
+            displayCurrentYearEvents();
+        }
+
+        function displayCurrentYearEvents() {
+            const events = allYearsData[currentYear];
+            document.getElementById('eventsText').textContent = events.join('\n');
+            document.getElementById('numberCount').textContent = currentYearNumberCount;
+            document.getElementById('eventsDisplay').classList.remove('hidden');
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.className = 'mt-6 p-4 rounded-lg ';
+            
+            if (type === 'success') {
+                statusDiv.className += 'bg-green-50 border-2 border-green-200 text-green-800';
+            } else if (type === 'error') {
+                statusDiv.className += 'bg-red-50 border-2 border-red-200 text-red-800';
+            } else {
+                statusDiv.className += 'bg-blue-50 border-2 border-blue-200 text-blue-800';
+            }
+            
+            statusDiv.textContent = message;
+            statusDiv.classList.remove('hidden');
+            
+            setTimeout(() => {
+                statusDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        function clearForm() {
+            document.getElementById('dataEntry').value = '';
+        }
+
+        function doneWithYear() {
+            if (allYearsData[currentYear].length === 0) {
+                alert('Please save at least some numbers for this year before proceeding.');
+                return;
+            }
+
+            currentYear++;
+            allYearsData[currentYear] = [];
+            currentYearNumberCount = 0;
+
+            document.getElementById('currentYear').textContent = currentYear;
+            document.getElementById('displayYear').textContent = currentYear;
+            document.getElementById('eventsDisplay').classList.add('hidden');
+            document.getElementById('eventsText').textContent = '';
+            document.getElementById('numberCount').textContent = '0';
+            clearForm();
+
+            showStatus(`Moving to year ${currentYear}. Enter numbers for this year.`, 'info');
+        }
+
+        function finishAllUploads() {
+            if (allYearsData[currentYear] && allYearsData[currentYear].length === 0) {
+                delete allYearsData[currentYear];
+            }
+
+            if (Object.keys(allYearsData).length === 0) {
+                alert('No numbers saved. Please save at least some numbers.');
+                return;
+            }
+
+            showSummary();
+        }
+
+        function showSummary() {
+            document.getElementById('uploadInterface').classList.add('hidden');
+            document.getElementById('summaryView').classList.remove('hidden');
+            document.getElementById('totalNumbersSaved').textContent = totalSavedCount;
+
+            const container = document.getElementById('yearSummaries');
+            container.innerHTML = '';
+
+            const years = Object.keys(allYearsData).sort((a, b) => a - b);
+
+            years.forEach(year => {
+                const events = allYearsData[year];
+                if (events.length > 0) {
+                    const div = document.createElement('div');
+                    div.className = 'bg-white border-2 border-indigo-200 rounded-lg p-6';
+                    div.innerHTML = `
+                        <h3 class="text-xl font-bold text-indigo-900 mb-4">Year ${year} - ${currentDayType} (${events.length} combinations)</h3>
+                        <div class="bg-gray-50 border border-gray-300 rounded-lg p-4 max-h-64 overflow-y-auto">
+                            <pre class="font-mono text-sm whitespace-pre-wrap">${events.join('\n')}</pre>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                }
+            });
+        }
+
+        function resetApp() {
+            if (confirm('Are you sure you want to start over?')) {
+                allYearsData = {};
+                currentYear = null;
+                startYear = null;
+                currentDayType = null;
+                totalSavedCount = 0;
+                currentYearNumberCount = 0;
+                
+                document.getElementById('summaryView').classList.add('hidden');
+                document.getElementById('yearSelectionStep').classList.remove('hidden');
+                document.getElementById('startYearInput').value = '';
+                document.getElementById('dayTypeSelect').value = '';
+            }
+        }
+
+        // Strategy Analysis Functions
+        let strategyData = null;
+
+        async function runStrategyAnalysis() {
+            const dayType = document.getElementById('strategyDayTypeSelect').value;
+            const winningNumbers = document.getElementById('strategyWinningNumbersInput').value.trim();
+            const strategyType = document.getElementById('strategyTypeSelect').value;
+
+            if (!dayType) {
+                showStrategyStatus('Please select a day type', 'error');
+                return;
+            }
+
+            if (!winningNumbers) {
+                showStrategyStatus('Please enter winning numbers', 'error');
+                return;
+            }
+
+            if (!strategyType) {
+                showStrategyStatus('Please select a strategy', 'error');
+                return;
+            }
+
+            if (strategyType !== 'A') {
+                showStrategyStatus('Only Strategy A is currently available', 'error');
+                return;
+            }
+            
+            // Validate format
+            if (!winningNumbers.match(/^\d{1,2}(-\d{1,2})+$/)) {
+                showStrategyStatus('Invalid format. Use numbers separated by hyphens (e.g., 88-74-57-60-8)', 'error');
+                return;
+            }
+
+            showStrategyStatus('Fetching data from database...', 'info');
+
+            try {
+                // Fetch all data for the selected day type
+                const { data, error } = await supabaseClient
+                    .from('sika_numbers')
+                    .select('year, number')
+                    .eq('day_type', dayType)
+                    .order('year', { ascending: true })
+                    .order('id', { ascending: true });
+
+                if (error) {
+                    throw new Error('Database error: ' + error.message);
+                }
+
+                if (!data || data.length === 0) {
+                    showStrategyStatus('No data found for ' + dayType, 'error');
+                    return;
+                }
+
+                showStrategyStatus('Running Strategy A analysis...', 'info');
+
+                // Parse winning numbers
+                const winningNumsArray = winningNumbers.split('-').map(n => n.trim());
+
+                // Run Strategy A
+                const results = runStrategyA(data, winningNumsArray, dayType, winningNumbers);
+                
+                strategyData = results;
+
+                // Display results
+                displayStrategyResults(results);
+                showStrategyStatus('Analysis complete!', 'success');
+
+            } catch (error) {
+                console.error('Strategy error:', error);
+                showStrategyStatus('Error: ' + error.message, 'error');
+            }
+        }
+
+        function runStrategyA(data, winningNums, dayType, winningNumbersStr) {
+            // Step 1: Find matches and get top 5 years
+            const resultsByYear = {};
+            
+            data.forEach(row => {
+                const combination = row.number;
+                const comboNums = combination.split('-');
+                
+                // Find if this combination has any winning numbers
+                const hasMatch = comboNums.some(num => winningNums.includes(num));
+                
+                if (hasMatch) {
+                    if (!resultsByYear[row.year]) {
+                        resultsByYear[row.year] = [];
+                    }
+                    resultsByYear[row.year].push(combination);
+                }
+            });
+
+            // Get top 5 years by match count
+            const yearStats = Object.keys(resultsByYear).map(year => ({
+                year: parseInt(year),
+                matchCount: resultsByYear[year].length,
+                combinations: resultsByYear[year]
+            }));
+
+            yearStats.sort((a, b) => {
+                if (b.matchCount !== a.matchCount) {
+                    return b.matchCount - a.matchCount;
+                }
+                return a.year - b.year;
+            });
+
+            const top5Years = yearStats.slice(0, 5);
+
+            // Step 2: Create tally card (1-90, excluding winning numbers)
+            const tallyCard = {};
+            for (let i = 1; i <= 90; i++) {
+                if (!winningNums.includes(i.toString())) {
+                    tallyCard[i] = 0;
+                }
+            }
+
+            // Step 3: Process each combination from top 5 years
+            const yearBreakdown = {};
+            
+            top5Years.forEach(yearData => {
+                yearBreakdown[yearData.year] = {};
+                
+                yearData.combinations.forEach(combination => {
+                    const nums = combination.split('-');
+                    
+                    // For each number in the combination
+                    nums.forEach(numStr => {
+                        const num = parseInt(numStr);
+                        
+                        // Skip if it's a winning number or out of range
+                        if (winningNums.includes(numStr) || num > 90) {
+                            return;
+                        }
+                        
+                        // Increment tally
+                        if (tallyCard[num] !== undefined) {
+                            tallyCard[num]++;
+                            
+                            // Track per year
+                            if (!yearBreakdown[yearData.year][num]) {
+                                yearBreakdown[yearData.year][num] = 0;
+                            }
+                            yearBreakdown[yearData.year][num]++;
+                        }
+                    });
+                });
+            });
+
+            // Step 4: Categorize by frequency (3, 4, 5 times)
+            const frequency5 = [];
+            const frequency4 = [];
+            const frequency3 = [];
+
+            Object.entries(tallyCard).forEach(([num, count]) => {
+                if (count === 5) frequency5.push(parseInt(num));
+                else if (count === 4) frequency4.push(parseInt(num));
+                else if (count === 3) frequency3.push(parseInt(num));
+            });
+
+            // Sort numbers
+            frequency5.sort((a, b) => a - b);
+            frequency4.sort((a, b) => a - b);
+            frequency3.sort((a, b) => a - b);
+
+            return {
+                dayType: dayType,
+                winningNumbers: winningNumbersStr,
+                winningNumsArray: winningNums,
+                top5Years: top5Years,
+                tallyCard: tallyCard,
+                frequency5: frequency5,
+                frequency4: frequency4,
+                frequency3: frequency3,
+                yearBreakdown: yearBreakdown
+            };
+        }
+
+        function displayStrategyResults(results) {
+            // Display Tally Card
+            const tallyContainer = document.getElementById('tallyCardDisplay');
+            tallyContainer.innerHTML = '';
+
+            for (let i = 1; i <= 90; i++) {
+                const count = results.tallyCard[i] !== undefined ? results.tallyCard[i] : 'X';
+                const div = document.createElement('div');
+                
+                let bgColor = 'bg-gray-200';
+                if (count === 'X') {
+                    bgColor = 'bg-red-300';
+                } else if (count >= 5) {
+                    bgColor = 'bg-red-500 text-white';
+                } else if (count === 4) {
+                    bgColor = 'bg-orange-400 text-white';
+                } else if (count === 3) {
+                    bgColor = 'bg-yellow-400';
+                } else if (count > 0) {
+                    bgColor = 'bg-green-200';
+                }
+                
+                div.className = `${bgColor} p-2 rounded text-center font-mono text-sm font-bold`;
+                div.innerHTML = `${i}<br><span class="text-xs">(${count})</span>`;
+                tallyContainer.appendChild(div);
+            }
+
+            // Display Frequency 5
+            const freq5Container = document.getElementById('freq5Numbers');
+            if (results.frequency5.length > 0) {
+                freq5Container.innerHTML = `
+                    <div class="flex flex-wrap gap-2">
+                        ${results.frequency5.map(num => `<span class="bg-red-500 text-white px-3 py-1 rounded font-bold">${num}</span>`).join('')}
+                    </div>
+                    <p class="mt-2 text-sm text-gray-600">Total: ${results.frequency5.length} numbers</p>
+                `;
+            } else {
+                freq5Container.innerHTML = '<p class="text-gray-500">No numbers appeared 5 times</p>';
+            }
+
+            // Display Frequency 4
+            const freq4Container = document.getElementById('freq4Numbers');
+            if (results.frequency4.length > 0) {
+                freq4Container.innerHTML = `
+                    <div class="flex flex-wrap gap-2">
+                        ${results.frequency4.map(num => `<span class="bg-orange-400 text-white px-3 py-1 rounded font-bold">${num}</span>`).join('')}
+                    </div>
+                    <p class="mt-2 text-sm text-gray-600">Total: ${results.frequency4.length} numbers</p>
+                `;
+            } else {
+                freq4Container.innerHTML = '<p class="text-gray-500">No numbers appeared 4 times</p>';
+            }
+
+            // Display Frequency 3
+            const freq3Container = document.getElementById('freq3Numbers');
+            if (results.frequency3.length > 0) {
+                freq3Container.innerHTML = `
+                    <div class="flex flex-wrap gap-2">
+                        ${results.frequency3.map(num => `<span class="bg-yellow-400 px-3 py-1 rounded font-bold">${num}</span>`).join('')}
+                    </div>
+                    <p class="mt-2 text-sm text-gray-600">Total: ${results.frequency3.length} numbers</p>
+                `;
+            } else {
+                freq3Container.innerHTML = '<p class="text-gray-500">No numbers appeared 3 times</p>';
+            }
+
+            // Display Year-by-Year Breakdown
+            const yearContainer = document.getElementById('yearBreakdownDisplay');
+            yearContainer.innerHTML = '';
+
+            const frequentNumbers = [...results.frequency5, ...results.frequency4, ...results.frequency3].sort((a, b) => a - b);
+
+            if (frequentNumbers.length > 0) {
+                // Create a table for better visualization
+                results.top5Years.forEach(yearData => {
+                    const yearDiv = document.createElement('div');
+                    yearDiv.className = 'mb-4 p-4 bg-white rounded-lg border-2 border-gray-300';
+                    
+                    let html = `
+                        <h4 class="font-bold text-lg text-indigo-900 mb-3">Year ${yearData.year} (${yearData.matchCount} matching combinations)</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="bg-gray-100">
+                                        <th class="p-2 text-left">Number</th>
+                                        <th class="p-2 text-center">Appearances</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+
+                    // Group numbers by rows of 5 for better readability
+                    for (let i = 0; i < frequentNumbers.length; i += 5) {
+                        html += '<tr>';
+                        const rowNums = frequentNumbers.slice(i, i + 5);
+                        
+                        html += '<td class="p-2 border-t">';
+                        rowNums.forEach((num, idx) => {
+                            const count = results.yearBreakdown[yearData.year][num] || 0;
+                            const colorClass = count > 0 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-500';
+                            html += `<span class="${colorClass} px-2 py-1 rounded mr-2 inline-block mb-1">${num}</span>`;
+                        });
+                        html += '</td>';
+                        
+                        html += '<td class="p-2 border-t text-center">';
+                        rowNums.forEach((num, idx) => {
+                            const count = results.yearBreakdown[yearData.year][num] || 0;
+                            const colorClass = count > 0 ? 'font-bold text-blue-700' : 'text-gray-400';
+                            html += `<span class="${colorClass} px-2 py-1 rounded mr-2 inline-block mb-1">${count}x</span>`;
+                        });
+                        html += '</td>';
+                        
+                        html += '</tr>';
+                    }
+
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    yearDiv.innerHTML = html;
+                    yearContainer.appendChild(yearDiv);
+                });
+            } else {
+                yearContainer.innerHTML = '<p class="text-gray-500 text-center">No frequent numbers found</p>';
+            }
+
+            document.getElementById('strategyResults').classList.remove('hidden');
+        }
+
+        function showStrategyStatus(message, type) {
+            const statusDiv = document.getElementById('strategyStatus');
+            statusDiv.className = 'mt-4 p-4 rounded-lg ';
+            
+            if (type === 'success') {
+                statusDiv.className += 'bg-green-50 border-2 border-green-200 text-green-800';
+            } else if (type === 'error') {
+                statusDiv.className += 'bg-red-50 border-2 border-red-200 text-red-800';
+            } else {
+                statusDiv.className += 'bg-blue-50 border-2 border-blue-200 text-blue-800';
+            }
+            
+            statusDiv.textContent = message;
+            statusDiv.classList.remove('hidden');
+            
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    statusDiv.classList.add('hidden');
+                }, 5000);
+            }
+        }
+
+        function downloadStrategyPdf() {
+            if (!strategyData) {
+                alert('No strategy data available');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            let yPosition = 20;
+            const pageHeight = doc.internal.pageSize.height;
+            const marginBottom = 20;
+
+            // Title
+            doc.setFontSize(23);
+            doc.setFont(undefined, 'bold');
+            doc.text('Strategy A - Tally Card Analysis', 105, yPosition, { align: 'center' });
+            
+            yPosition += 10;
+            doc.setFontSize(12);
+            doc.text(`Day Type: ${strategyData.dayType}`, 105, yPosition, { align: 'center' });
+            
+            yPosition += 7;
+            doc.text(`Winning Numbers: ${strategyData.winningNumbers}`, 105, yPosition, { align: 'center' });
+            
+            yPosition += 7;
+            doc.setFontSize(15);
+            doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, yPosition, { align: 'center' });
+            
+            yPosition += 12;
+
+            // Frequency Summary Box
+            doc.setFillColor(240, 253, 244);
+            const boxHeight = 40;
+            doc.rect(15, yPosition, 180, boxHeight, 'F');
+            doc.setDrawColor(167, 243, 208);
+            doc.setLineWidth(2);
+            doc.rect(15, yPosition, 180, boxHeight);
+            
+            yPosition += 8;
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text('Frequency Summary', 105, yPosition, { align: 'center' });
+            yPosition += 8;
+
+            // Frequency 5
+            doc.setFontSize(15);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(220, 38, 38);
+            doc.text('5 times:', 20, yPosition);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(0, 0, 0);
+            const freq5Text = strategyData.frequency5.length > 0 ? strategyData.frequency5.join(', ') : 'None';
+            doc.text(freq5Text, 45, yPosition, { maxWidth: 145 });
+            yPosition += 7;
+
+            // Frequency 4
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(249, 115, 22);
+            doc.text('4 times:', 20, yPosition);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(0, 0, 0);
+            const freq4Text = strategyData.frequency4.length > 0 ? strategyData.frequency4.join(', ') : 'None';
+            doc.text(freq4Text, 45, yPosition, { maxWidth: 145 });
+            yPosition += 7;
+
+            // Frequency 3
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(234, 179, 8);
+            doc.text('3 times:', 20, yPosition);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(0, 0, 0);
+            const freq3Text = strategyData.frequency3.length > 0 ? strategyData.frequency3.join(', ') : 'None';
+            doc.text(freq3Text, 45, yPosition, { maxWidth: 145 });
+            yPosition += 15;
+
+            // Year breakdown
+            const frequentNumbers = [...strategyData.frequency5, ...strategyData.frequency4, ...strategyData.frequency3].sort((a, b) => a - b);
+            
+            if (frequentNumbers.length > 0) {
+                doc.setFontSize(16);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(0, 0, 0);
+                doc.text('Year-by-Year Breakdown', 105, yPosition, { align: 'center' });
+                yPosition += 10;
+
+                strategyData.top5Years.forEach((yearData, yearIndex) => {
+                    // Check if we need a new page
+                    if (yPosition > pageHeight - 60) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+
+                    // Year header
+                    doc.setFontSize(14);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(55, 48, 163);
+                    doc.text(`Year ${yearData.year} (${yearData.matchCount} matching combinations)`, 20, yPosition);
+                    yPosition += 8;
+
+                    // Draw horizontal line
+                    doc.setDrawColor(200, 200, 200);
+                    doc.setLineWidth(0.5);
+                    doc.line(20, yPosition, 190, yPosition);
+                    yPosition += 5;
+
+                    // Display numbers in rows
+                    doc.setFontSize(9);
+                    doc.setFont(undefined, 'normal');
+                    
+                    const numbersPerRow = 10;
+                    for (let i = 0; i < frequentNumbers.length; i += numbersPerRow) {
+                        if (yPosition > pageHeight - marginBottom) {
+                            doc.addPage();
+                            yPosition = 20;
+                        }
+
+                        const rowNumbers = frequentNumbers.slice(i, i + numbersPerRow);
+                        let xPosition = 25;
+
+                        rowNumbers.forEach(num => {
+                            const count = strategyData.yearBreakdown[yearData.year][num] || 0;
+                            
+                            // Draw box for number
+                            if (count > 0) {
+                                doc.setFillColor(59, 130, 246); // Blue
+                                doc.setTextColor(255, 255, 255); // White text
+                            } else {
+                                doc.setFillColor(229, 231, 235); // Gray
+                                doc.setTextColor(156, 163, 175); // Gray text
+                            }
+                            
+                            doc.roundedRect(xPosition, yPosition - 4, 16, 6, 1, 1, 'F');
+                            
+                            // Number
+                            doc.setFont(undefined, 'bold');
+                            doc.text(`${num}`, xPosition + 8, yPosition, { align: 'center' });
+                            
+                            // Count below
+                            doc.setFontSize(7);
+                            if (count > 0) {
+                                doc.setTextColor(29, 78, 216); // Dark blue
+                            } else {
+                                doc.setTextColor(156, 163, 175); // Gray
+                            }
+                            doc.text(`(${count}x)`, xPosition + 8, yPosition + 4, { align: 'center' });
+                            
+                            doc.setFontSize(9);
+                            xPosition += 17;
+                        });
+
+                        yPosition += 10;
+                    }
+
+                    yPosition += 5;
+                });
+            }
+
+            // Footer
+            doc.setFontSize(15);
+            doc.setFont(undefined, 'italic');
+            doc.setTextColor(100, 100, 100);
+            const totalPages = doc.internal.pages.length - 1;
+            for (let i = 1; i <= totalPages; i++) {
+                doc.setPage(i);
+                doc.text(
+                    `Strategy A Analysis | Page ${i} of ${totalPages}`,
+                    105,
+                    pageHeight - 10,
+                    { align: 'center' }
+                );
+            }
+
+            const fileName = `Strategy_A_${strategyData.dayType.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+            doc.save(fileName);
+        }
+    </script>
+</body>
+</html>
